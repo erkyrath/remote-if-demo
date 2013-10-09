@@ -1,0 +1,41 @@
+<html>
+<head>
+<title>Remote IF Demo</title>
+</head>
+
+<body>
+
+<h1>Remote IF Demo</h1>
+
+<p>
+Welcome to the Remote IF Demo.
+</p>
+
+{% if not sessionid %}
+
+<p>
+You are not signed in.
+<form method="post" action="/">
+ {% module xsrf_form_html() %}
+ <input name="signin" type="submit" value="Sign In">
+</form>
+</p>
+
+{% else %}
+
+<p>
+Your session ID is {{sessionid}}.
+<form method="post" action="/">
+ {% module xsrf_form_html() %}
+ <input name="signout" type="submit" value="Sign Out">
+</form>
+</p>
+
+<p>
+<a href="/play">Begin playing the game</a>.
+</p>
+
+{% end %}
+
+</body>
+</html>
