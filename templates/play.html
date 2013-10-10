@@ -25,22 +25,7 @@ body {
 
 <script src="{{ static_url('jquery-1.9.1.min.js') }}" type="text/javascript"></script>
 <script src="{{ static_url('glkote.js') }}" type="text/javascript"></script>
-
-<script type="text/javascript">
-
-var generation = 0;
-
-function accept() {
-  generation = generation+1;
-  var arg = { type: 'update', gen: generation };
-  GlkOte.update(arg);
-}
-
-Game = {
-  accept: accept,
-};
-
-</script>
+<script src="{{ static_url('play.js') }}" type="text/javascript"></script>
 
 </head>
 <body>
