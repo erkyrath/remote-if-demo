@@ -53,6 +53,7 @@ class MainHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def post(self):
         if self.get_argument('signin', None):
+            # Create a random sessionid string
             sessionid = binascii.hexlify(os.urandom(16)) # bytes, not string
             self.set_secure_cookie('sessionid', sessionid, expires_days=10)
         elif self.get_argument('signout', None):
@@ -93,17 +94,26 @@ class PlayHandler(tornado.web.RequestHandler):
         if not session:
             raise Exception('No session found')
 
+        # Start the game process if it's not already running.
         if not session.proc:
             session.launch()
-        if session.yielder is not None:
-            raise Exception('Already has a yielder')
+
+        # Create a callback object. We'll block on this, and the game's
+        # output handler will trigger it when the response is complete.
+        if session.callback is not None:
+            raise Exception('Already has a callback')
         callkey = object()
-        session.yielder = yield tornado.gen.Callback(callkey)
+        session.callback = yield tornado.gen.Callback(callkey)
+
+        # This logic relies on the proper behavior of the RemGlk library:
+        # that it produces exactly one JSON output for every JSON input.
+        # Timer events will make a mess of that logic, but RemGlk doesn't
+        # support timers yet.
         
         session.input(self.request.body)
         res = yield tornado.gen.Wait(callkey)
         self.application.log.info('### ...game output: %s', res)
-        session.yielder = None
+        session.callback = None
 
 class Session:
     def __init__(self, app, sessionid):
@@ -111,7 +121,7 @@ class Session:
         self.id = sessionid
         self.proc = None
         self.linebuffer = []
-        self.yielder = None
+        self.callback = None
         
     def __repr__(self):
         return '<Session "%s">' % (self.id.decode(),)
@@ -129,11 +139,16 @@ class Session:
             self.gameclosed, self.gameread)
 
     def input(self, msg):
-        # Pass the data along to the game.
+        """Pass an update (bytes) along to the game.
+        """
         self.proc.stdin.write(msg)
 
     def gameread(self, msg):
-        self.log.info('Game output: %s', msg)
+        """Callback for game process output (which will be bytes).
+        We accumulate output until it's a complete JSON message, and then
+        trigger the waiting callback.
+        """
+        self.log.info('###Game output: %s', msg)
         self.linebuffer.extend(msg.splitlines())
         testjson = ''
         for ix in range(len(self.linebuffer)):
@@ -142,12 +157,16 @@ class Session:
                 json.loads(testjson)
                 res = b'\n'.join(self.linebuffer[0:ix+1])
                 self.linebuffer[0:ix+1] = []
-                self.yielder(res)
+                if self.callback is not None:
+                    self.callback(res)
                 return
             except:
                 continue
 
     def gameclosed(self, msg):
+        """Callback for game process termination. (Technically, EOF on
+        the game's stdout.)
+        """
         self.log.info('Game has terminated!')
     
         
@@ -165,7 +184,7 @@ class MyApplication(tornado.web.Application):
         # Grab the same logger that tornado uses.
         self.log = logging.getLogger("tornado.general")
 
-        # Maps session ID to session objects.
+        # Session repository; maps session ID to session objects.
         self.sessions = {}
 
 application = MyApplication(
