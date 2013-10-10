@@ -4,8 +4,6 @@
   Written by Andrew Plotkin. This script is in the public domain.
  */
 
-var generation = 0;
-
 function accept(arg) {
     $.ajax({
         type: 'POST',
