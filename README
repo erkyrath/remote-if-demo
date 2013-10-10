@@ -40,10 +40,10 @@ This is a demo, *not* a production-ready solution.
 
 This script requires:
 
-  Python 3
-  Tornado web server 3.1.1
+  Python 3 (tested with Python 3.3.2)
+  Tornado web server 3.1.1 or later
     http://www.tornadoweb.org/
-  An application (such as Glulxe) compiled with RemGlk 0.2.1
+  An application (such as Glulxe) compiled with RemGlk 0.2.1 or later
     http://eblong.com/zarf/glk/
 
 This package contains the following additional libraries:
