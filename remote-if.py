@@ -115,6 +115,9 @@ class PlayHandler(tornado.web.RequestHandler):
         self.application.log.info('### ...game output: %s', res)
         session.callback = None
 
+        self.write(res)
+        self.set_header("Content-Type", "application/json; charset=UTF-8")
+
 class Session:
     def __init__(self, app, sessionid):
         self.log = app.log
@@ -148,7 +151,6 @@ class Session:
         We accumulate output until it's a complete JSON message, and then
         trigger the waiting callback.
         """
-        self.log.info('###Game output: %s', msg)
         self.linebuffer.extend(msg.splitlines())
         testjson = ''
         for ix in range(len(self.linebuffer)):
