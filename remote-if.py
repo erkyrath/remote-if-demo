@@ -119,7 +119,7 @@ class PlayHandler(tornado.web.RequestHandler):
         
         session.input(self.request.body)
         res = yield tornado.gen.Wait(callkey)
-        self.application.log.info('### ...game output: %s', res)
+        print(res.decode()) ###
         session.callback = None
 
         self.write(res)
