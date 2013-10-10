@@ -3,10 +3,48 @@ RemGlk) to a client-side IF display library (GlkOte).
 
 Written by Andrew Plotkin. The remote-if.py script is in the public domain.
 
+This script launches a Tornado web server which can manage an IF game
+as a subprocess. The web client connects to the game via the GlkOte
+library (included).
+
+To try this...
+
+- Compile Glulxe with RemGlk. Use the latest GitHub version of RemGlk:
+   https://github.com/erkyrath/remglk
+- Download the Glulx version of Colossal Cave: 
+   http://ifarchive.org/if-archive/games/glulx/advent.ulx
+- Type:
+   python3 remote-if.py --debug --command='glulxe advent.ulx'
+- In your browser, visit:
+   http://localhost:4000/
+- Press "log in", then "play the game".
+
+
+This is a demo, *not* a production-ready solution.
+
+- This has no database component, nor any other sort of persistence.
+  Instances of the IF game run as subprocesses of the server. If the
+  server restarts, the games are all killed.
+
+- Since the IF games run as subprocesses, they consume memory for as
+  long as they run. There is currently no reaping of abandoned games,
+  so the server will eventually consume all RAM and choke.
+
+- Something is screwy with the file-selection prompts. Trying "save"
+  or "restore" will cause a GlkOte error and fail.
+
+- Character input is also broken.
+
+- If you reload your browser window, RemGlk does not respond sensibly.
+
+
 This script requires:
 
+  Python 3
   Tornado web server 3.1.1
     http://www.tornadoweb.org/
+  An application (such as Glulxe) compiled with RemGlk 0.2.1
+    http://eblong.com/zarf/glk/
 
 This package contains the following additional libraries:
 
