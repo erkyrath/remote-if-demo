@@ -25,6 +25,7 @@ opts = tornado.options.options
 appoptions = {
     'xsrf_cookies': True,
     'template_path': './templates',
+    'static_path': './static',
     'cookie_secret': '__FILL_IN_RANDOM_DATA_HERE__',
     }
 
