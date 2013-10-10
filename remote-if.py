@@ -94,10 +94,16 @@ class PlayHandler(tornado.web.RequestHandler):
             raise Exception('No session found')
 
         if not session.proc:
-            yield session.launch()
+            session.launch()
+        if session.yielder is not None:
+            raise Exception('Already has a yielder')
+        callkey = object()
+        session.yielder = yield tornado.gen.Callback(callkey)
+        
         session.input(self.request.body)
-        res = yield tornado.gen.Wait(session.id)
+        res = yield tornado.gen.Wait(callkey)
         self.application.log.info('### ...game output: %s', res)
+        session.yielder = None
 
 class Session:
     def __init__(self, app, sessionid):
@@ -105,14 +111,13 @@ class Session:
         self.id = sessionid
         self.proc = None
         self.linebuffer = []
+        self.yielder = None
         
     def __repr__(self):
         return '<Session "%s">' % (self.id.decode(),)
 
-    @tornado.gen.coroutine
     def launch(self):
         self.log.info('Launching game for %s', self)
-        self.yielder = (yield tornado.gen.Callback(self.id))
         
         args = shlex.split(opts.command)
         self.proc = tornado.process.Subprocess(
