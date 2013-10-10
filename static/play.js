@@ -1,3 +1,8 @@
+/*
+  Client-side code for Remote-IF demo.
+
+  Written by Andrew Plotkin. This script is in the public domain.
+ */
 
 var generation = 0;
 

@@ -1,0 +1,16 @@
+Remote-IF: Demonstrates connecting a server-side IF interpreter (using
+RemGlk) to a client-side IF display library (GlkOte).
+
+Written by Andrew Plotkin. The remote-if.py script is in the public domain.
+
+This script requires:
+
+  Tornado web server 3.1.1
+    http://www.tornadoweb.org/
+
+This package contains the following additional libraries:
+
+  jQuery JavaScript Library v1.9.1
+    http://jquery.com/  (MIT license)
+  GlkOte 2.0.0 (modified for jQuery)
+    http://eblong.com/zarf/glk/glkote.html  (BSD-like license)

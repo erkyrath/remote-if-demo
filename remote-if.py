@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+"""
+Remote-IF script. When run, this brings up a Tornado web server which
+allows clients to play an IF game via RemGlk / GlkOte.
+
+Written by Andrew Plotkin. This script is in the public domain.
+"""
+
 import logging
 import os
 import json
