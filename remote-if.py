@@ -93,7 +93,7 @@ class PlayHandler(tornado.web.RequestHandler):
         
     @tornado.gen.coroutine
     def post(self):
-        self.application.log.info('### play post: %s', self.request.body)
+        #print(self.request.body.decode())
         sessionid = self.get_secure_cookie('sessionid')
         if not sessionid:
             raise Exception('You are not logged in')
@@ -119,7 +119,7 @@ class PlayHandler(tornado.web.RequestHandler):
         
         session.input(self.request.body)
         res = yield tornado.gen.Wait(callkey)
-        print(res.decode()) ###
+        #print(res.decode())
         session.callback = None
 
         self.write(res)
