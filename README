@@ -33,8 +33,6 @@ This is a demo, *not* a production-ready solution.
 - Something is screwy with the file-selection prompts. Trying "save"
   or "restore" will cause a GlkOte error and fail.
 
-- Character input is also broken.
-
 - If you reload your browser window, RemGlk does not respond sensibly.
 
 
