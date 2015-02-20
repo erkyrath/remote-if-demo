@@ -2,13 +2,8 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010 by Andrew Plotkin. You may
- * copy and distribute it freely, by any means and under any conditions,
- * as long as the code and documentation is not changed. You may also
- * incorporate this code into your own program and distribute that, or
- * modify this code and use and distribute the modified version, as long
- * as you retain a notice in your program or documentation which mentions
- * my name and the URL shown above.
+ * This Javascript library is copyright 2010-15 by Andrew Plotkin.
+ * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a "file" for saving
  * or loading data. The web page must have a <div> with id "windowport" (this
@@ -357,8 +352,7 @@ function evhan_select_change_editing() {
     butel = $('#'+dialog_el_id+'_delete');
     butel.prop('disabled', false);
     butel = $('#'+dialog_el_id+'_display');
-    butel.prop('disabled', !usage_is_textual(file.dirent.usage));
-    //### use binary flag?
+    butel.prop('disabled', false);
 }
 
 /* Event handler: The "Load" button.
@@ -644,17 +638,30 @@ function evhan_storage_changed(ev) {
         /* We want to display the selected file's contents. */
         bodyel.empty();
 
-        /* This is an array of character values (as ints) */
+        /* ### Make the unjustified assumption that this is an array of
+           character values (as ints). */
         var dat = file_read(editing_dirent);
         /* ### This doesn't correctly handle Unicode characters outside the
            16-bit range. */
         dat = String.fromCharCode.apply(this, dat);
+          
+        //### use binary flag?
+        if (usage_is_textual(editing_dirent.usage)) {
+          var textel = $('<div>', { 'class': 'DiaDisplayText' });
+          textel.text(dat);
+          bodyel.append(textel);
+          set_caption('Displaying file contents...', true);
+        }
+        else {
+          var b64dat = window.btoa(dat);
+          /*### the download link should really be the filename, escaped
+            for attribute safety, with the proper file suffix attached. */
+          var linkel = $('<a>', { 'href': 'data:application/octet-stream;base64,'+b64dat, 'target': '_blank', 'download': 'data' });
+          linkel.text(editing_dirent.filename);
+          bodyel.append(linkel);
+          set_caption('Use "Save As" option in your browser to download this link.', true);
+        }
 
-        var textel = $('<div>', { 'class': 'DiaDisplayText' });
-        textel.text(dat);
-        bodyel.append(textel);
-
-        set_caption('Displaying file contents...', true);
         return false;
     }
 
@@ -1027,8 +1034,11 @@ function format_date(date) {
    JSON.stringify() and JSON.parse(), except not all browsers support those.
 */
 
+var encode_array = null;
+var decode_array = null;
+
 if (window.JSON) {
-    function encode_array(arr) {
+    encode_array = function(arr) {
         var res = JSON.stringify(arr);
         var len = res.length;
         /* Safari's JSON quotes arrays for some reason; we need to strip
@@ -1037,12 +1047,12 @@ if (window.JSON) {
             res = res.slice(1, len-1);
         return res;
     }
-    function decode_array(val) { return JSON.parse(val); }
+    decode_array = function(val) { return JSON.parse(val); }
 }
 else {
     /* Not-very-safe substitutes for JSON in old browsers. */
-    function encode_array(arr) { return '[' + arr + ']'; }
-    function decode_array(val) { return eval(val); }
+    encode_array = function(arr) { return '[' + arr + ']'; }
+    decode_array = function(val) { return eval(val); }
 }
 
 /* Locate the storage object, and set up the storage event handler, at load
