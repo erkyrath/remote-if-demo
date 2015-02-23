@@ -10,8 +10,6 @@ var updates = [];
 var generation = 1;
 
 function accept(arg) {
-    GlkOte.log('### accept ' + arg.type);
-
     if (arg.type == 'init') {
         try {
             var url = 'ws://' + window.location.host + '/websocket/' + sessionid;
@@ -62,7 +60,6 @@ function evhan_websocket_close() {
 }
 
 function evhan_websocket_message(ev) {
-    GlkOte.log('### message ' + ev.data);
     try {
         var obj = JSON.parse(ev.data);
         updates.push(obj);
