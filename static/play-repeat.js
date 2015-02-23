@@ -40,10 +40,12 @@ function accept(arg) {
             return;
         }
 
-        var data = updates.shift();
-        data.gen = generation;
-        generation++;
-        GlkOte.update(data);
+        while (updates.length) {
+            var data = updates.shift();
+            data.gen = generation;
+            generation++;
+            GlkOte.update(data);
+        }
         return;
     }
 };
