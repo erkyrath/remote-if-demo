@@ -85,6 +85,8 @@ class RecordHandler(tornado.web.RequestHandler):
 class RepeatHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def get(self, sid):
+        if sid not in self.application.games:
+            raise tornado.web.HTTPError(404, 'No such session ID')
         self.render('repeat-view.html')
 
 class Game:
