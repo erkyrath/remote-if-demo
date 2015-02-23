@@ -144,7 +144,6 @@ class RecordHandler(tornado.web.RequestHandler):
                                 game.gridcontent[winid].append({'line':curlen})
                                 curlen += 1
                             game.gridcontent[winid][linenum] = line
-                        print('### grid %d: %r' % (winid, game.gridcontent[winid]))
 
         # Construct a viewing-state, identical to this one's output except
         # with no inputs. (This is a shallow copy.)
