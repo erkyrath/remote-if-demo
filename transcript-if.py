@@ -74,7 +74,6 @@ class RecordHandler(tornado.web.RequestHandler):
         # We use json.dumps as an easy way to pretty-print the object
         # we just parsed.
         print(json.dumps(state, indent=1, sort_keys=True))
-        self.write('Ok')
 
         sid = state['sessionId']
         game = self.application.games.get(sid)
@@ -82,6 +81,20 @@ class RecordHandler(tornado.web.RequestHandler):
             game = Game(sid, state['label'])
             game.launched = state['timestamp']
             self.application.games[sid] = game
+
+        # Construct a viewing-state, identical to this one's output except
+        # with no inputs. (This is a shallow copy.)
+        viewupdate = {}
+        for (key, val) in state['output'].items():
+            if key != 'input':
+                viewupdate[key] = val
+        
+        conns = [ conn for conn in self.application.conns.values() if conn.sid == sid ]
+        for conn in conns:
+            conn.sock.write_message(viewupdate)
+
+        # Send a reply back which the client will ignore.
+        self.write('Ok')
 
 class RepeatHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine

@@ -7,8 +7,11 @@
 var websocket = null;
 var connected = false;
 var updates = [];
+var generation = 1;
 
 function accept(arg) {
+    GlkOte.log('### accept ' + arg.type);
+
     if (arg.type == 'init') {
         try {
             var url = 'ws://' + window.location.host + '/websocket/' + sessionid;
@@ -22,13 +25,27 @@ function accept(arg) {
         websocket.onopen = evhan_websocket_open;
         websocket.onclose = evhan_websocket_close;
         websocket.onmessage = evhan_websocket_message;
+
+        var data = {
+            type:'update', gen:generation
+        };
+        generation++;
+        GlkOte.update(data);
+        return;
     }
 
-    var data = {
-        type:'update', gen:1
-    };
+    if (arg.type == 'external' && arg.value == 'websocket') {
+        if (updates.length == 0) {
+            GlkOte.log('websocket event, but no updates');
+            return;
+        }
 
-    GlkOte.update(data);
+        var data = updates.shift();
+        data.gen = generation;
+        generation++;
+        GlkOte.update(data);
+        return;
+    }
 };
 
 function evhan_websocket_open() {
@@ -47,6 +64,7 @@ function evhan_websocket_message(ev) {
     try {
         var obj = JSON.parse(ev.data);
         updates.push(obj);
+        GlkOte.extevent('websocket');
     }
     catch (ex) {
         GlkOte.log('badly-formatted message from websocket: ' + ev.data);
