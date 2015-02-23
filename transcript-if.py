@@ -101,7 +101,16 @@ class RecordHandler(tornado.web.RequestHandler):
             dells = [ winid for winid in game.bufcontent.keys() if (winid not in winset) ]
             for winid in dells:
                 del game.bufcontent[winid]
-            ### trim grid windows
+                
+            # Trim grid windows down to current size.
+            for win in winls:
+                winid = win['id']
+                if win['type'] == 'grid':
+                    newheight = win['gridheight']
+                    if winid in game.gridcontent:
+                        if len(game.gridcontent[winid]) > newheight:
+                            del game.gridcontent[winid][newheight:]
+                    ### Should trim width as well
 
         contls = output.get('content')
         if contls is not None:
@@ -123,6 +132,19 @@ class RecordHandler(tornado.web.RequestHandler):
                         if winid not in game.bufcontent:
                             game.bufcontent[winid] = []
                         game.bufcontent[winid].extend(textls)
+                if win['type'] == 'grid':
+                    linels = cont.get('lines')
+                    if linels:
+                        if winid not in game.gridcontent:
+                            game.gridcontent[winid] = []
+                        for line in linels:
+                            linenum = line['line']
+                            curlen = len(game.gridcontent[winid])
+                            while curlen < linenum+1:
+                                game.gridcontent[winid].append({'line':curlen})
+                                curlen += 1
+                            game.gridcontent[winid][linenum] = line
+                        print('### grid %d: %r' % (winid, game.gridcontent[winid]))
 
         print('### bufcontent: %r' % (list(game.bufcontent.keys()),))
         print('### gridcontent: %r' % (list(game.gridcontent.keys()),))
