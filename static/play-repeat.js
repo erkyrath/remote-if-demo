@@ -43,7 +43,15 @@ function evhan_websocket_close() {
 }
 
 function evhan_websocket_message(ev) {
-    GlkOte.log('### message ' + ev);
+    GlkOte.log('### message ' + ev.data);
+    try {
+        var obj = JSON.parse(ev.data);
+        updates.push(obj);
+    }
+    catch (ex) {
+        GlkOte.log('badly-formatted message from websocket: ' + ev.data);
+        return;
+    }
 }
 
 Game = {

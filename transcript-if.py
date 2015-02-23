@@ -92,20 +92,21 @@ class RepeatHandler(tornado.web.RequestHandler):
 
 class SocketHandler(tornado.websocket.WebSocketHandler):
     sid = None
+    cid = None
     
     def open(self, sid):
         sid = sid.decode()  # It comes in as bytes?
         if sid not in self.application.games:
             raise tornado.web.HTTPError(404, 'No such session ID')
         self.sid = sid
-        self.application.create_connection(sid, self)
+        self.cid = self.application.create_connection(sid, self)
         
     def on_message(self, msg):
-        print('### on_message ' + str(self.sid))
+        print('### on_message ' + repr(msg))
         pass
     
     def on_close(self):
-        print('### on_close ' + str(self.sid))
+        self.application.drop_connection(self.cid)
         pass
 
 class Game:
@@ -123,6 +124,11 @@ class Connection:
         Connection.last_connid += 1
         self.sid = sid
         self.sock = sock
+
+    def finalize(self):
+        self.id = None
+        self.sid = None
+        self.sock = None
         
 # Core handlers.
 handlers = [
@@ -148,6 +154,13 @@ class MyApplication(tornado.web.Application):
     def create_connection(self, sid, sock):
         conn = Connection(sid, sock)
         self.conns[conn.id] = conn
+        return conn.id
+
+    def drop_connection(self, cid):
+        conn = self.conns.get(cid)
+        if conn:
+            del self.conns[conn.id]
+            conn.finalize()
 
 application = MyApplication(
     handlers,
