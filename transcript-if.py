@@ -90,7 +90,17 @@ class RecordHandler(tornado.web.RequestHandler):
         winls = output.get('windows')
         if winls is not None:
             game.windows = output['windows']
-        ### Also discard old content, trim grid windows
+            # Also discard cached content for windows that have gone.
+            winset = set()
+            for win in winls:
+                winset.add(win['id'])
+            dells = [ win['id'] for win in game.gridcontent.values() if (win['id'] not in winset) ]
+            for val in dells:
+                del game.gridcontent[val]
+            dells = [ win['id'] for win in game.bufcontent.values() if (win['id'] not in winset) ]
+            for val in dells:
+                del game.bufcontent[val]
+            ### trim grid windows
 
         # Construct a viewing-state, identical to this one's output except
         # with no inputs. (This is a shallow copy.)
@@ -147,6 +157,7 @@ class Game:
         self.gen = 0
         self.windows = []
         self.gridcontent = {}
+        self.bufcontent = {}
 
 class Connection:
     last_connid = 1
