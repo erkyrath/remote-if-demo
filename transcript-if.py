@@ -22,6 +22,7 @@ import tornado.web
 import tornado.gen
 import tornado.ioloop
 import tornado.options
+import tornado.websocket
 
 tornado.options.define(
     'port', type=int, default=4000,
@@ -76,7 +77,7 @@ class RecordHandler(tornado.web.RequestHandler):
         self.write('Ok')
 
         sid = state['sessionId']
-        game = self.application.games.get(sid);
+        game = self.application.games.get(sid)
         if not game:
             game = Game(sid, state['label'])
             game.launched = state['timestamp']
@@ -87,7 +88,25 @@ class RepeatHandler(tornado.web.RequestHandler):
     def get(self, sid):
         if sid not in self.application.games:
             raise tornado.web.HTTPError(404, 'No such session ID')
-        self.render('repeat-view.html')
+        self.render('repeat-view.html', sid=sid)
+
+class SocketHandler(tornado.websocket.WebSocketHandler):
+    sid = None
+    
+    def open(self, sid):
+        sid = sid.decode()  # It comes in as bytes?
+        if sid not in self.application.games:
+            raise tornado.web.HTTPError(404, 'No such session ID')
+        self.sid = sid
+        self.application.create_connection(sid, self)
+        
+    def on_message(self, msg):
+        print('### on_message ' + str(self.sid))
+        pass
+    
+    def on_close(self):
+        print('### on_close ' + str(self.sid))
+        pass
 
 class Game:
     def __init__(self, sid, label):
@@ -95,12 +114,22 @@ class Game:
         self.label = label
         self.windows = []
         self.gridcontent = {}
+
+class Connection:
+    last_connid = 1
+    
+    def __init__(self, sid, sock):
+        self.id = Connection.last_connid
+        Connection.last_connid += 1
+        self.sid = sid
+        self.sock = sock
         
 # Core handlers.
 handlers = [
     (r'/', MainHandler),
     (r'/record', RecordHandler),
     (r'/repeat/([0-9]+)', RepeatHandler),
+    (r'/websocket/([0-9]+)', SocketHandler),
 ]
 
 class MyApplication(tornado.web.Application):
@@ -113,6 +142,12 @@ class MyApplication(tornado.web.Application):
 
         # Game repository; maps session ID to game objects.
         self.games = {}
+        # Connection repository; maps connection ID to connection objects
+        self.conns = {}
+        
+    def create_connection(self, sid, sock):
+        conn = Connection(sid, sock)
+        self.conns[conn.id] = conn
 
 application = MyApplication(
     handlers,

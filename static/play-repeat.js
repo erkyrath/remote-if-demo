@@ -11,7 +11,7 @@ var updates = [];
 function accept(arg) {
     if (arg.type == 'init') {
         try {
-            var url = 'ws://' + window.location.host + '/websocket';
+            var url = 'ws://' + window.location.host + '/websocket/' + sessionid;
             websocket = new WebSocket(url);
         }
         catch (ex) {
