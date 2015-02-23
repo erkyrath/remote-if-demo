@@ -85,6 +85,7 @@ class RecordHandler(tornado.web.RequestHandler):
 
         output = state['output']
         game.gen = output['gen']
+        
         # If this update contains a windows list, replace our game's
         # existing list.
         winls = output.get('windows')
@@ -94,13 +95,37 @@ class RecordHandler(tornado.web.RequestHandler):
             winset = set()
             for win in winls:
                 winset.add(win['id'])
-            dells = [ win['id'] for win in game.gridcontent.values() if (win['id'] not in winset) ]
-            for val in dells:
-                del game.gridcontent[val]
-            dells = [ win['id'] for win in game.bufcontent.values() if (win['id'] not in winset) ]
-            for val in dells:
-                del game.bufcontent[val]
+            dells = [ winid for winid in game.gridcontent.keys() if (winid not in winset) ]
+            for winid in dells:
+                del game.gridcontent[winid]
+            dells = [ winid for winid in game.bufcontent.keys() if (winid not in winset) ]
+            for winid in dells:
+                del game.bufcontent[winid]
             ### trim grid windows
+
+        contls = output.get('content')
+        if contls is not None:
+            for cont in contls:
+                winid = cont['id']
+                win = None
+                for val in game.windows:
+                    if val['id'] == winid:
+                        win = val
+                        break
+                if not win:
+                    continue
+                if win['type'] == 'buffer':
+                    if cont.get('clear'):
+                        if winid in game.bufcontent:
+                            del game.bufcontent[winid]
+                    textls = cont.get('text')
+                    if textls:
+                        if winid not in game.bufcontent:
+                            game.bufcontent[winid] = []
+                        game.bufcontent[winid].extend(textls)
+
+        print('### bufcontent: %r' % (list(game.bufcontent.keys()),))
+        print('### gridcontent: %r' % (list(game.gridcontent.keys()),))
 
         # Construct a viewing-state, identical to this one's output except
         # with no inputs. (This is a shallow copy.)
@@ -139,6 +164,13 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
             # Construct a "current state of the world" update and send it.
             viewupdate = { 'type':'update', 'gen':game.gen }
             viewupdate['windows'] = game.windows
+            content = []
+            for (winid, ls) in game.bufcontent.items():
+                if ls:
+                    wincontent = { 'id':winid, 'text':ls }
+                    content.append(wincontent)
+            if content:
+                viewupdate['content'] = content
             self.write_message(viewupdate)
         
     def on_message(self, msg):
