@@ -75,12 +75,22 @@ class RecordHandler(tornado.web.RequestHandler):
         # we just parsed.
         print(json.dumps(state, indent=1, sort_keys=True))
 
+        # If no game exists for this session, create it.
         sid = state['sessionId']
         game = self.application.games.get(sid)
         if not game:
             game = Game(sid, state['label'])
             game.launched = state['timestamp']
             self.application.games[sid] = game
+
+        output = state['output']
+        game.gen = output['gen']
+        # If this update contains a windows list, replace our game's
+        # existing list.
+        winls = output.get('windows')
+        if winls is not None:
+            game.windows = output['windows']
+        ### Also discard old content, trim grid windows
 
         # Construct a viewing-state, identical to this one's output except
         # with no inputs. (This is a shallow copy.)
@@ -113,6 +123,13 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
             raise tornado.web.HTTPError(404, 'No such session ID')
         self.sid = sid
         self.cid = self.application.create_connection(sid, self)
+
+        game = self.application.games.get(sid)
+        if game and game.windows:
+            # Construct a "current state of the world" update and send it.
+            viewupdate = { 'type':'update', 'gen':game.gen }
+            viewupdate['windows'] = game.windows
+            self.write_message(viewupdate)
         
     def on_message(self, msg):
         print('### on_message ' + repr(msg))
@@ -126,6 +143,8 @@ class Game:
     def __init__(self, sid, label):
         self.id = sid
         self.label = label
+
+        self.gen = 0
         self.windows = []
         self.gridcontent = {}
 
