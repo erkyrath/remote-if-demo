@@ -146,9 +146,6 @@ class RecordHandler(tornado.web.RequestHandler):
                             game.gridcontent[winid][linenum] = line
                         print('### grid %d: %r' % (winid, game.gridcontent[winid]))
 
-        print('### bufcontent: %r' % (list(game.bufcontent.keys()),))
-        print('### gridcontent: %r' % (list(game.gridcontent.keys()),))
-
         # Construct a viewing-state, identical to this one's output except
         # with no inputs. (This is a shallow copy.)
         viewupdate = {}
@@ -190,6 +187,10 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
             for (winid, ls) in game.bufcontent.items():
                 if ls:
                     wincontent = { 'id':winid, 'text':ls }
+                    content.append(wincontent)
+            for (winid, ls) in game.gridcontent.items():
+                if ls:
+                    wincontent = { 'id':winid, 'lines':ls }
                     content.append(wincontent)
             if content:
                 viewupdate['content'] = content
