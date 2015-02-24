@@ -52,6 +52,8 @@ for key in [ 'debug' ]:
         appoptions[key] = val
 
 class MainHandler(tornado.web.RequestHandler):
+    # Handle the "/" URL: the login screen
+    
     @tornado.gen.coroutine
     def get(self):
         sessionid = self.get_secure_cookie('sessionid')
@@ -71,6 +73,8 @@ class MainHandler(tornado.web.RequestHandler):
         self.render('main.html', sessionid=sessionid)
         
 class PlayHandler(tornado.web.RequestHandler):
+    # Handle the "/play" URL: the game screen, and AJAX messages from GlkOte
+    
     def check_xsrf_cookie(self):
         # All the form input on this page is GlkOte AJAX requests,
         # so we'll skip XSRF checking. (If we wanted to include XSRF,
@@ -126,6 +130,10 @@ class PlayHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json; charset=UTF-8")
 
 class Session:
+    """The Session class represents a logged-in player. The Session contains
+    the link to the RemGlk/Glulxe subprocess.
+    """
+    
     def __init__(self, app, sessionid):
         self.log = app.log
         self.id = sessionid
@@ -200,6 +208,7 @@ application = MyApplication(
     handlers,
     **appoptions)
 
+# Boilerplate to launch the web server.
 application.init_app()
 application.listen(opts.port)
 tornado.ioloop.IOLoop.instance().start()

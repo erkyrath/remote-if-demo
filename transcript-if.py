@@ -11,6 +11,8 @@ Then add
 to the Game object fields in sample-demo.html. Commands in the demo game
 will be send to the server, which will print them out.
 
+###
+
 Written by Andrew Plotkin. This script is in the public domain.
 """
 
@@ -263,6 +265,7 @@ application = MyApplication(
     handlers,
     **appoptions)
 
+# Boilerplate to launch the web server.
 application.init_app()
 application.listen(opts.port)
 tornado.ioloop.IOLoop.instance().start()
