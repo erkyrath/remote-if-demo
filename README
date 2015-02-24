@@ -88,7 +88,8 @@ These scripts require:
   Python 3 (tested with Python 3.3 and up)
   Tornado web server 3.1.1 or later
     http://www.tornadoweb.org/
-  An application (such as Glulxe) compiled with RemGlk 0.2.1 or later
+  (For remote-if.py) An application (such as Glulxe) compiled with
+    RemGlk 0.2.1 or later
     http://eblong.com/zarf/glk/
 
 This package contains the following additional libraries:
