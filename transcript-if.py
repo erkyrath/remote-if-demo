@@ -167,12 +167,18 @@ class RecordHandler(tornado.web.RequestHandler):
         for (key, val) in state['output'].items():
             if key != 'input':
                 viewupdate[key] = val
-        
+
+        # Send the output to every connected viewer of this game.
+                
+        ### It would be more correct to track every viewer's generation
+        # number, and send each one their individually-incremented "gen"
+        # field. This works, though.
         conns = [ conn for conn in self.application.conns.values() if conn.sid == sid ]
         for conn in conns:
             conn.sock.write_message(viewupdate)
 
-        # Send a reply back which the client will ignore.
+        # Send a reply back (to the GlkOte library which sent this game
+        # update). This is ignored, actually.
         self.write('Ok')
 
 class SocketHandler(tornado.websocket.WebSocketHandler):
