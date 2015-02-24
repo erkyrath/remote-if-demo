@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
 
 """
-When run, this brings up a Tornado web server which accepts transcript
-recording from the GlkOte library.
-
-###
-To use this, install Tornado (version 3) and "python3 transcript-demo.py".
-Then add
-  recording_url: 'http://localhost:4000/'
-to the Game object fields in sample-demo.html. Commands in the demo game
-will be send to the server, which will print them out.
-
-###
+Transcript-IF script. This brings up a Tornado web server which accepts
+transcript recording from the GlkOte library.
 
 Written by Andrew Plotkin. This script is in the public domain.
 """
@@ -287,6 +278,7 @@ class MyApplication(tornado.web.Application):
         if conn:
             del self.conns[conn.id]
             conn.finalize()
+
 
 application = MyApplication(
     handlers,
