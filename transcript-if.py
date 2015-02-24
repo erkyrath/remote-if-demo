@@ -116,7 +116,7 @@ class RecordHandler(tornado.web.RequestHandler):
             dells = [ winid for winid in game.bufcontent.keys() if (winid not in winset) ]
             for winid in dells:
                 del game.bufcontent[winid]
-                
+
             # Trim grid windows down to current size.
             for win in winls:
                 winid = win['id']
@@ -147,6 +147,7 @@ class RecordHandler(tornado.web.RequestHandler):
                         if winid not in game.bufcontent:
                             game.bufcontent[winid] = []
                         game.bufcontent[winid].extend(textls)
+                    ### Should trim buffer scrollback to a reasonable limit.
                 if win['type'] == 'grid':
                     linels = cont.get('lines')
                     if linels:
@@ -206,6 +207,8 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
             self.write_message(viewupdate)
         
     def on_message(self, msg):
+        # This should never happen; play-repeat.js never sends websocket
+        # messages.
         print('### on_message ' + repr(msg))
         pass
     
