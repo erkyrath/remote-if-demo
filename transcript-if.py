@@ -53,13 +53,26 @@ for key in [ 'debug' ]:
         appoptions[key] = val
 
 class MainHandler(tornado.web.RequestHandler):
+    # Handle the "/" URL: the list of available games
+    
     @tornado.gen.coroutine
     def get(self):
         ls = list(self.application.games.values())
         ls.sort(key=lambda val:val.launched)
         self.render('repeat-menu.html', games=ls)
 
+class RepeatHandler(tornado.web.RequestHandler):
+    # Handle the "/repeat/SID" URL: the view of a game
+    
+    @tornado.gen.coroutine
+    def get(self, sid):
+        if sid not in self.application.games:
+            raise tornado.web.HTTPError(404, 'No such session ID')
+        self.render('repeat-view.html', sid=sid)
+
 class RecordHandler(tornado.web.RequestHandler):
+    # Handle the "/record" URL: AJAX messages from GlkOte.
+    
     def check_xsrf_cookie(self):
         # All the form input on this page is GlkOte AJAX requests,
         # so we'll skip XSRF checking.
@@ -161,14 +174,9 @@ class RecordHandler(tornado.web.RequestHandler):
         # Send a reply back which the client will ignore.
         self.write('Ok')
 
-class RepeatHandler(tornado.web.RequestHandler):
-    @tornado.gen.coroutine
-    def get(self, sid):
-        if sid not in self.application.games:
-            raise tornado.web.HTTPError(404, 'No such session ID')
-        self.render('repeat-view.html', sid=sid)
-
 class SocketHandler(tornado.websocket.WebSocketHandler):
+    # Handle the "/websocket/SID" URL: websocket connections
+    
     sid = None
     cid = None
     
@@ -206,6 +214,10 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
         pass
 
 class Game:
+    """The Game class represents a GlkOte/Quixe game whose transcript
+    we are receiving. We maintain a record of the last known window
+    state and content, so that we can bring new viewers up to date.
+    """
     def __init__(self, sid, label):
         self.id = sid
         self.label = label
@@ -216,6 +228,12 @@ class Game:
         self.bufcontent = {}
 
 class Connection:
+    """The Connection class represents a connected viewer (not a player,
+    but somebody watching a game being played). The Connection contains
+    a websocket link to the viewer's browser. (If the viewer closes their
+    browser window, we'll discard the Connection.)
+    """
+    
     last_connid = 1
     
     def __init__(self, sid, sock):
