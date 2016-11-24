@@ -2,7 +2,7 @@
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010-15 by Andrew Plotkin.
+ * This Javascript library is copyright 2010-16 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a "file" for saving
@@ -12,6 +12,11 @@
  *
  * This library also contains utility routines to manage "files", which are
  * actually entries in the browser's localStorage object.
+ *
+ * If you are in the Electron.io environment, you want to include electrofs.js
+ * instead of this module. To distinguish this from electrofs.js, look at
+ * Dialog.streaming, which will be true for electrofs.js and false for
+ * dialog.js.
  *
  * The primary function to call:
  *
@@ -25,7 +30,9 @@
  * (These fileref objects are not the same as the filerefs used in the Glk API.
  * A Glk fileref contains one of these filerefs, however.)
  *
+ * Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
  * Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
+ * Dialog.file_construct_temp_ref(usage) -- create a temporary fileref
  * Dialog.file_write(ref, content, israw) -- write data to the file
  * Dialog.file_read(ref, israw) -- read data from the file
  * Dialog.file_ref_exists(ref) -- returns whether the file exists
@@ -84,10 +91,10 @@ var cur_filelist; /* the files currently on display */
 */
 function dialog_open(tosave, usage, gameid, callback) {
     if (is_open)
-        throw 'Dialog: dialog box is already open.';
+        throw new Error('Dialog: dialog box is already open.');
 
     if (localStorage == null)
-        throw 'Dialog: your browser does not support local storage.';
+        throw new Error('Dialog: your browser does not support local storage.');
 
     dialog_callback = callback;
     will_save = tosave;
@@ -112,7 +119,7 @@ function dialog_open(tosave, usage, gameid, callback) {
 
     var rootel = $('#'+root_el_id);
     if (!rootel.length)
-        throw 'Dialog: unable to find root element #' + root_el_id + '.';
+        throw new Error('Dialog: unable to find root element #' + root_el_id + '.');
 
     /* Create the grey-out screen. */
     var screen = $('#'+dialog_el_id+'_screen');
@@ -676,8 +683,10 @@ function evhan_storage_changed(ev) {
         }
         /* Sort by usage, then date modified */
         ls.sort(function(f1, f2) {
-                if (f1.dirent.usage != f2.dirent.usage)
-                    return (f1.dirent.usage < f2.dirent.usage);
+                if (f1.dirent.usage < f2.dirent.usage) 
+                    return -1;
+                else if (f1.dirent.usage > f2.dirent.usage) 
+                    return 1;
                 return f2.modified.getTime() - f1.modified.getTime(); 
             });
 
@@ -790,6 +799,20 @@ function evhan_storage_changed(ev) {
     }
 }
 
+/* Dialog.file_clean_fixed_name(filename, usage) -- clean up a filename
+ *
+ * Take an arbitrary string and convert it into a filename that can
+ * validly be stored in the user's directory. This is called for filenames
+ * that come from the game file, but not for filenames selected directly
+ * by the user (i.e. from a file selection dialog).
+ *
+ * Because we store everything in browser local storage, we have no
+ * filename restrictions.
+ */
+function file_clean_fixed_name(filename, usage) {
+    return filename;
+}
+
 /* Dialog.file_construct_ref(filename, usage, gameid) -- create a fileref
  *
  * Create a fileref. This does not create a file; it's just a thing you can use
@@ -800,13 +823,25 @@ function file_construct_ref(filename, usage, gameid) {
     if (!filename)
         filename = '';
     if (!usage)
-        useage = '';
+        usage = '';
     if (!gameid)
         gameid = '';
     var key = usage + ':' + gameid + ':' + filename;
     var ref = { dirent: 'dirent:'+key, content: 'content:'+key,
                 filename: filename, usage: usage, gameid: gameid };
     return ref;
+}
+
+/* Dialog.file_construct_temp_ref(usage)
+ *
+ * Create a fileref in a temporary directory. Every time this is called
+ * it should create a completely new fileref.
+ */
+function file_construct_temp_ref(usage) {
+    var timestamp = new Date().getTime();
+    var filename = "_temp_" + timestamp + "_" + Math.random();
+    filename = filename.replace('.', '');
+    return file_construct_ref(filename, usage);
 }
 
 /* Create a fileref from a browser storage key (string). If the key does not
@@ -973,6 +1008,10 @@ function file_read(dirent, israw) {
         return decode_array(content);
 }
 
+function file_notimplemented() {
+    throw new Error('streaming function not implemented in Dialog');
+}
+
 /* Check whether a given fileref matches the given usage and gameid strings. If
    you don't want to check one attribute or the other, pass null for that
    argument.
@@ -1028,6 +1067,36 @@ function format_date(date) {
     var day = (date.getMonth()+1) + '/' + date.getDate();
     var time = date.getHours() + ':' + (date.getMinutes() < 10 ? '0' : '') + date.getMinutes();
     return day + ' ' + time;
+}
+
+/* Store a snapshot (a JSONable object) in a signature-dependent location.
+   If snapshot is null, delete the snapshot instead.
+
+   We rely on JSON.stringify() and JSON.parse(); autosave is primarily
+   for the Electron environment.
+*/
+function autosave_write(signature, snapshot) {
+    var key = 'autosave:' + signature;
+    if (!snapshot) {
+        localStorage.removeItem(key);
+    }
+    else {
+        localStorage.setItem(key, JSON.stringify(snapshot));
+    }
+}
+
+/* Load a snapshot (a JSONable object) from a signature-dependent location.
+*/
+function autosave_read(signature) {
+    var key = 'autosave:' + signature;
+    var val = localStorage.getItem(key);
+    if (val) {
+        try {
+            return JSON.parse(val);
+        }
+        catch (ex) { }
+    }
+    return null;
 }
 
 /* Define encode_array() and decode_array() functions. These would be
@@ -1114,13 +1183,23 @@ $(window).on('storage', evhan_storage_changed);
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
+    streaming: false,
     open: dialog_open,
 
+    file_clean_fixed_name: file_clean_fixed_name,
     file_construct_ref: file_construct_ref,
+    file_construct_temp_ref: file_construct_temp_ref,
     file_ref_exists: file_ref_exists,
     file_remove_ref: file_remove_ref,
     file_write: file_write,
-    file_read: file_read
+    file_read: file_read,
+
+    /* stubs for not-implemented functions */
+    file_fopen: file_notimplemented,
+
+    /* support for the autosave hook */
+    autosave_write: autosave_write,
+    autosave_read: autosave_read
 };
 
 }();
