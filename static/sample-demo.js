@@ -7,6 +7,7 @@
 game_metrics = null;
 game_streamout_left = new Array();
 game_streamout_right = new Array();
+game_streamout_graph = new Array();
 game_streamclear_left = false;
 game_streamclear_right = false;
 game_generation = 1;
@@ -14,6 +15,7 @@ game_moves = 1;
 game_quotemove = 0;
 game_quotehaslink = false;
 game_splitwin = false;
+game_graphwin = false;
 game_statusmenu = false;
 game_statusmenu_from_left = true;
 game_print_left = true;
@@ -24,7 +26,9 @@ game_inputline_left = true;
 game_inputline_right = true;
 game_inputinitial_left = null;
 game_inputinitial_right = null;
-game_timed_timer = null;
+game_timer_request = null;
+game_timer_lastrequest = null;
+game_simulate_quit = false;
 game_simulate_crash = false;
 game_simulate_timeout = false;
 game_simulate_dialog = false;
@@ -33,8 +37,8 @@ game_mood = 0;
 game_mood_list = [ 'cheery', 'dopey', 'hungry', 'explodey' ];
 
 function game_version() {
-  return ('Release 18; GlkOte library ' + GlkOte.version 
-    + '; last updated 6-Feb-2015');
+  return ('Release 21; GlkOte library ' + GlkOte.version 
+    + '; last updated 26-Nov-2016');
 }
 
 function game_n_spaces(count) {
@@ -69,7 +73,7 @@ function game_clear_window(val) {
   }
 }
 
-function game_print(val) {
+function game_print(val, lineflags) {
   var ix;
   var stream;
 
@@ -79,21 +83,52 @@ function game_print(val) {
     stream = game_streamout_right;
 
   if (val == null) {
-    stream.push({ });
+    var obj = {};
+    if (lineflags)
+      jQuery.extend(obj, lineflags);
+    stream.push(obj);
     return;
   }
 
+  /* If val is a string, it is added. If the string contains newlines, this
+     will require several content entries. */
   if (jQuery.type(val) === 'string') {
+    var obj;
     var ls = val.split('\n');
     for (ix=0; ix<ls.length; ix++) {
       if (ls[ix])
-        stream.push({ content: ['normal', ls[ix]] });
+        obj = { content: ['normal', ls[ix]] };
       else
-        stream.push({ });
+        obj = {};
+      if (lineflags)
+        jQuery.extend(obj, lineflags);
+      stream.push(obj);
+      lineflags = undefined;
     }
     return;
   }
 
+  /* If val is an array, it must contain valid line_array_data entries. */
+  if (jQuery.type(val) === 'array') {
+    var obj = { content: val };
+    if (lineflags)
+      jQuery.extend(obj, lineflags);
+    stream.push(obj);
+    return;
+  }
+
+  /* If val is an object with a special field, it is added as a singleton
+     line_array_data entry. */
+  if (val.special !== undefined) {
+    var obj = { content: [ val ] };
+    if (lineflags)
+      jQuery.extend(obj, lineflags);
+    stream.push(obj);
+    return;
+  }
+
+  /* Otherwise, we add a singleton text entry. We're careful about the
+     format, though. */
   var style = val.style;
   if (!style)
     style = 'normal';
@@ -118,19 +153,23 @@ function game_select() {
     if (!game_inputgen_left) {
       game_inputgen_left = game_generation;
       game_print_left = true;
-      if (game_inputline_left)
-        game_print('\n>');
-      else
-        game_print('\nHit a key:>');
+      if (!game_simulate_quit) {
+        if (game_inputline_left)
+          game_print('\n>');
+        else
+          game_print('\nHit a key:>');
+      }
     }
 
     if (game_splitwin && !game_inputgen_right) {
       game_inputgen_right = game_generation;
       game_print_left = false;
-      if (game_inputline_right)
-        game_print('\n>');
-      else
-        game_print('\nHit a key:>');
+      if (!game_simulate_quit) {
+        if (game_inputline_right)
+          game_print('\n>');
+        else
+          game_print('\nHit a key:>');
+      }
     }
   }
   else {
@@ -145,6 +184,7 @@ function game_select() {
      a "window" element whether any windows have changed or not. */
 
   var have_quotewin = (game_quotemove == game_moves);
+  var have_graphwin = game_graphwin;
 
   var metrics = game_metrics;
   var pwidth = metrics.width;
@@ -170,13 +210,21 @@ function game_select() {
   /* How many pixels are needed for statuslines and quotelines? */
   var statusheight = metrics.gridcharheight*statuslines + metrics.gridmarginy;
   var quoteheight  = metrics.gridcharheight*quotelines + metrics.gridmarginy;
+  var graphheight = 120 + metrics.graphicsmarginy;
 
   /* As many characters as fit horizontally given the pixel width. */
   var gridchars = Math.floor((pwidth - (2*metrics.outspacingx+metrics.gridmarginx)) / metrics.gridcharwidth);
 
   var storytop = (metrics.outspacingy+statusheight+metrics.inspacingy);
-  if (have_quotewin)
-    storytop = (metrics.outspacingy+statusheight+metrics.inspacingy+quoteheight+metrics.inspacingy);
+  if (have_quotewin) {
+    var quotetop = storytop;
+    storytop = storytop + (quoteheight+metrics.inspacingy);
+  }
+  if (have_graphwin) {
+    var graphtop = storytop;
+    storytop = storytop + (graphheight+metrics.inspacingy);
+  }
+
   var storyright = pwidth;
   if (game_splitwin)
     storyright = Math.round(pwidth/2 + metrics.inspacingx/2);
@@ -198,9 +246,18 @@ function game_select() {
     argw.push({ id: 3, type: 'grid', rock: 33,
       gridheight: quotelines, gridwidth: gridchars,
       left: metrics.outspacingx,
-      top: (metrics.outspacingy+statusheight+metrics.inspacingy),
+      top: quotetop,
       width: pwidth-(2*metrics.outspacingx),
       height: quoteheight });
+  }
+  if (have_graphwin) {
+    argw.push({ id: 5, type: 'graphics', rock: 55,
+      graphwidth: pwidth-(2*metrics.outspacingx)-metrics.graphicsmarginx,
+      graphheight: graphheight-metrics.graphicsmarginy,
+      left: metrics.outspacingx,
+      top: graphtop,
+      width: pwidth-(2*metrics.outspacingx),
+      height: graphheight });
   }
   if (game_splitwin) {
     argw.push({ id: 4, type: 'buffer', rock: 44,
@@ -250,6 +307,14 @@ function game_select() {
         obj.text = game_streamout_right;
       if (game_streamclear_right)
         obj.clear = 'true';
+      argc.push(obj);
+    }
+  }
+
+  if (game_graphwin) {
+    if (game_streamout_graph.length) {
+      var obj = { id: 5 };
+      obj.draw = game_streamout_graph;
       argc.push(obj);
     }
   }
@@ -306,7 +371,12 @@ function game_select() {
   }
   if (game_statusmenu) {
     var obj = { id: 1, gen: game_inputgen_top,
-      type: 'char', xpos:15, ypos:3+game_mood };
+      type: 'char', xpos:15, ypos:3+game_mood,
+      mouse: true };
+    argi.push(obj);
+  }
+  if (game_graphwin) {
+    var obj = { id: 5, mouse: true };
     argi.push(obj);
   }
   if (true) {
@@ -315,6 +385,15 @@ function game_select() {
   }
 
   var arg = { type:'update', gen:game_generation, windows:argw, content:argc, input:argi };
+
+  if (game_timer_lastrequest != game_timer_request) {
+      arg.timer = game_timer_request;
+      game_timer_lastrequest = game_timer_request;
+  }
+
+  if (game_simulate_quit) {
+    arg.disable = true;
+  }
 
   if (game_simulate_timeout) {
     /* If the game were crunching away in another thread, or in another
@@ -328,6 +407,7 @@ function game_select() {
 
   game_streamout_left.length = 0;
   game_streamout_right.length = 0;
+  game_streamout_graph.length = 0;
   game_streamclear_left = false;
   game_streamclear_right = false;
 }
@@ -388,13 +468,18 @@ function game_accept(res) {
   else if (res.type == 'hyperlink') {
     game_submit_hyperlink_input(res.window, res.value);
   }
-  else if (res.type == 'external') {
-    if (res.value == 'timer')
-      game_submit_timer_input();
+  else if (res.type == 'mouse') {
+    game_submit_mouse_input(res.window, res.x, res.y);
+  }
+  else if (res.type == 'timer') {
+    game_submit_timer_input();
   }
   else if (res.type == 'arrange') {
     game_metrics = res.metrics;
     game_inputgen_top = 0;
+  }
+  else if (res.type == 'redraw') {
+    game_submit_redraw_input(res.window);
   }
   else if (res.type == 'init') {
     game_metrics = res.metrics;
@@ -486,6 +571,8 @@ function game_submit_hyperlink_input(winid, val) {
     msg = 'brillig';
   else if (val == 4)
     msg = 'a tove';
+  else if (val == 5)
+    msg = 'an image';
   else
     msg = 'BUG';
 
@@ -508,11 +595,41 @@ function game_submit_hyperlink_input(winid, val) {
   game_print('You clicked on ' + msg + '.');
 }
 
+function game_submit_mouse_input(winid, xpos, ypos) {
+  game_inputgen_left = 0;
+  game_inputline_left = true;
+  game_print_left = true;
+
+  var msg = '??? at';
+  if (winid == 1)
+    msg = 'in the status line at character';
+  else if (winid == 5)
+    msg = 'in the graphics window at coordinates';
+  game_print('You clicked ' + msg + ' ' + xpos + ', ' + ypos + '.');
+
+  if (winid == 1) {
+    if (game_statusmenu && xpos >= 4 && xpos <= 20
+      && ypos >= 3 && ypos <= 3+game_mood_list.length)
+      game_mood = ypos - 3;
+  }
+}
+
 function game_submit_timer_input() {
+  game_timer_request = null;
   game_inputgen_left = 0;
   game_inputline_left = true;
   game_print_left = true;
   game_print('The timer has gone off. Ding!');
+}
+
+function game_submit_redraw_input(win) {
+  game_inputgen_left = 0;
+  game_inputline_left = true;
+  game_print_left = true;
+  if (win == 5)
+    game_print('Detected graphics redraw event.');
+  else
+    game_print('Detected graphics redraw event for window ' + win + ' (which is weird, should be 5).');
 }
 
 function game_file_load_selected(ref) {
@@ -550,6 +667,53 @@ function game_file_save_selected(ref) {
   game_select();
 }
 
+function game_fetch_image(num, alignment) {
+  var img = null;
+
+  switch (num) {
+  case 0:
+    img = { special:'image', image:0, 
+            url:'demomedia/pict-0.jpeg', alttext:'Picture of Zarf',
+            width:125, height:180 };
+    break;
+  case 1:
+    img = { special:'image', image:1, 
+            url:'demomedia/pict-1.png', alttext:'Colored stripes',
+            width:150, height:180 };
+    break;
+  case 2:
+    img = { special:'image', image:2, 
+            url:'demomedia/pict-2.png', alttext:'Monochrome textured symbol',
+            width:155, height:180 };
+    break;
+  case 5:
+    img = { special:'image', image:5, 
+            url:'demomedia/pict-5.png', alttext:'Capital I',
+            width:47, height:62 };
+    break;
+  case 10:
+    img = { special:'image', image:10, 
+            url:'demomedia/pict-10.jpeg', alttext:'Green texture',
+            width:128, height:128 };
+    break;
+  case 11:
+    img = { special:'image', image:11, 
+            url:'demomedia/pict-11.jpeg', alttext:'Purple texture',
+            width:128, height:128 };
+    break;
+  }
+
+  if (!img)
+    return null;
+
+  if (alignment)
+    img.alignment = alignment;
+
+  return img;
+}
+
+var regexp_color = /(^#(?:[0-9a-f]{3})$)|(^#(?:[0-9a-f]{6})$)|(^red|green|blue|yellow|orange|purple|magenta|cyan|black|white$)/;
+
 function game_parse(val) {
   if (val == 'help' || val == 'about' || val == '?') {
     game_print('This is an interface demo of the RemGlk Javascript front end. There is no IF interpreter behind the display library -- just a few lines of Javascript. It accepts some commands which demonstrate the capabilities of the display system.\n');
@@ -557,6 +721,13 @@ function game_parse(val) {
     helpopt = function(cmd, val) {
       game_print({ text: '    '});
       game_print({ newline:false, style:'subheader', text: cmd});
+      game_print({ newline:false, text: ': ' + val});
+    }
+    helpopt2 = function(cmd, args, val) {
+      game_print({ text: '    '});
+      game_print({ newline:false, style:'subheader', text: cmd});
+      game_print({ newline:false, text: ' '});
+      game_print({ newline:false, style:'emphasized', text: args});
       game_print({ newline:false, text: ': ' + val});
     }
 
@@ -571,13 +742,21 @@ function game_parse(val) {
     helpopt('menu',    'pause the game for menu input');
     helpopt('quote',   'display a header pane with a centered box quote');
     helpopt('link',    'hyperlinks in the story window and quote box');
-    helpopt('split',   'open a second story window');
-    helpopt('unsplit', 'close the second story window');
+    helpopt('image',   'display three-image test');
+    helpopt2('image',  '[number] [left/right/up/down/center] [WxH] [caption]',  'display an image');
+    helpopt('break',   'insert a flow break');
+    helpopt('split/unsplit', 'open/close a second story window');
+    helpopt('graph/ungraph', 'open/close a graphics window');
+    helpopt2('gcolor', '[color]', 'set the default color of the graphics window');
+    helpopt2('gfill',  '[color] [X,Y] [WxH]', 'draw rectangle in graphics window (or fill it) with a color (or the default color)');
+    helpopt2('gimage', '[number] [X,Y] [WxH]', 'draw image in graphics window');
     helpopt('both',    'print output in both story windows');
     helpopt('bothlong','print long output in both story windows');
     helpopt('timer',   'set a timed event to fire in two seconds');
     helpopt('save, load',  'open a file dialog');
     helpopt('script',  'write a fake transcript file');
+    helpopt('metrics', 'display the computed window metrics');
+    helpopt('quit',    'simulate the VM stopping');
     helpopt('crash',   'react as if the game had crashed');
     helpopt('slow',    'react as if the game were taking a long time to compute its output');
     helpopt('todo',    'what do I still need to fix in this interface?');
@@ -588,7 +767,7 @@ function game_parse(val) {
     game_print('To do list:\n');
     game_print('    re-lay out windows correctly after "make font bigger" menu command (or if external script code resizes the gameport)');
     game_print('    support indentation and text-alignment in styles');
-    game_print('    pictures, sound');
+    game_print('    sound');
     return;
   }
 
@@ -617,6 +796,90 @@ function game_parse(val) {
     game_print({ newline:false, text:' is an external URL set off by a distinct style. (External hyperlinks may be clickable or not, depending on GlkOte\'s configuration.)\n'});
     game_quotemove = game_moves+1;
     game_quotehaslink = true;
+    return;
+  }
+
+  if (val == 'break') {
+    game_print(null, { flowbreak:true });
+    game_print('The previous line is flow-breaked. Flow-broken?');
+    return;
+  }
+
+  if (val == 'image') {
+    game_print('Here are several images in a row:\n');
+    var img1 = game_fetch_image(0, 'inlineup');
+    img1.hyperlink = 5;
+    var img2 = game_fetch_image(10, 'inlinedown');
+    var img3 = game_fetch_image(5, 'inlinecenter');
+    game_print(['normal', 'With inlineup and link: ', img1, 'normal', ' With inlinedown: ', img2, 'normal', ' With inlinecenter: ', img3]);
+    return;
+  }
+
+  if (val.slice(0,5) == 'image') {
+    var imagenum = 0;
+    var alignment = 'inlineup';
+    var dimensions = undefined;
+    var caption = false;
+    var link = false;
+    var ls = val.split(' ');
+    for (var ix=0; ix<ls.length; ix++) {
+      val = ls[ix];
+      if (!val || val == 'image')
+        continue;
+      if (val.match(/^[0-9]+$/)) {
+        imagenum = 1 * val;
+        continue;
+      }
+      if (val.match(/^[0-9]+x[0-9]+$/)) {
+        val = val.split('x');
+        dimensions = { width:(1*val[0]), height:(1*val[1]) };
+      }
+      if (val == 'up' || val == 'inlineup') {
+        alignment = 'inlineup';
+        continue;
+      }
+      if (val == 'down' || val == 'inlinedown') {
+        alignment = 'inlinedown';
+        continue;
+      }
+      if (val == 'center' || val == 'inlinecenter') {
+        alignment = 'inlinecenter';
+        continue;
+      }
+      if (val == 'left' || val == 'marginleft') {
+        alignment = 'marginleft';
+        continue;
+      }
+      if (val == 'right' || val == 'marginright') {
+        alignment = 'marginright';
+        continue;
+      }
+      if (val == 'caption') {
+        caption = true;
+        continue;
+      }
+      if (val == 'link') {
+        link = true;
+        continue;
+      }
+    }
+    var img = game_fetch_image(imagenum, alignment);
+    if (!img) {
+      game_print('There is no image number ' + imagenum + '.');
+      return;
+    }
+    if (link)
+      img.hyperlink = 5;
+    if (dimensions) {
+      img.width = dimensions.width;
+      img.height = dimensions.height;
+    }
+    if (!caption) {
+      game_print(img);
+    }
+    else {
+      game_print([img, "normal", " -- ", "emphasized", img.alttext]);      
+    }
     return;
   }
 
@@ -669,6 +932,149 @@ function game_parse(val) {
     return;
   }
 
+  if (val == 'graph' || val == 'graphics' || val == 'hgr') {
+    if (game_graphwin) {
+      game_print('The graphics window is already open.');
+    }
+    else {
+      game_print('You now have a graphics window.');
+      game_graphwin = true;
+    }
+    return;
+  }
+
+  if (val == 'ungraph' || val == 'ungraphics' || val == 'unhgr') {
+    if (!game_graphwin) {
+      game_print('There is no graphics window.');
+    }
+    else {
+      game_print('The graphics window is closed.');
+      game_graphwin = false;
+    }
+    return;
+  }
+
+  if (val.slice(0,6) == 'gcolor' || val.slice(0,8) == 'setcolor') {
+    if (!game_graphwin) {
+      game_print('There is no graphics window.');
+    }
+    else {
+      var obj = { special:'setcolor', color:'#FFFFFF' };
+      var ls = val.split(' ');
+      for (var ix=0; ix<ls.length; ix++) {
+        var val = ls[ix];
+        if (val.match(regexp_color))
+          obj.color = val;
+      }
+      game_streamout_graph.push(obj);
+      game_print('Set default color to ' + obj.color + '.');
+    }
+    return;
+  }
+
+  if (val.slice(0,5) == 'gfill') {
+    if (!game_graphwin) {
+      game_print('There is no graphics window.');
+    }
+    else {
+      var obj = { special:'fill' };
+      var ls = val.split(' ');
+      for (var ix=0; ix<ls.length; ix++) {
+        var val = ls[ix];
+        if (val.match(regexp_color)) {
+          obj.color = val;
+        }
+        else if (val.match(/^[0-9]+,[0-9]+$/)) {
+          var pair = val.split(',');
+          obj.x = (1*pair[0]);
+          obj.y = (1*pair[1]);
+        }
+        else if (val.match(/^[0-9]+x[0-9]+$/)) {
+          var pair = val.split('x');
+          obj.width = (1*pair[0]);
+          obj.height = (1*pair[1]);
+        }
+      }
+      if (obj.width == undefined && obj.x != undefined) {
+        game_print('Must specify both X,Y and WxH.');
+      }
+      else if (obj.width != undefined && obj.x == undefined) {
+        game_print('Must specify both X,Y and WxH.');
+      }
+      else {
+        game_streamout_graph.push(obj);
+        game_print('Filled a rectangle with a color.');
+      }
+    }
+    return;
+  }
+
+  if (val.slice(0,6) == 'gimage') {
+    if (!game_graphwin) {
+      game_print('There is no graphics window.');
+      return;
+    }
+    var imagenum = 0;
+    var dimensions = undefined;
+    var pos = { x:0, y:0 };
+    var ls = val.split(' ');
+    for (var ix=0; ix<ls.length; ix++) {
+      val = ls[ix];
+      if (!val || val == 'gimage')
+        continue;
+      if (val.match(/^[0-9]+$/)) {
+        imagenum = 1 * val;
+        continue;
+      }
+      if (val.match(/^[0-9]+x[0-9]+$/)) {
+        var pair = val.split('x');
+        dimensions = { width:(1*pair[0]), height:(1*pair[1]) };
+      }
+      if (val.match(/^[0-9]+,[0-9]+$/)) {
+        var pair = val.split(',');
+        pos = { x:(1*pair[0]), y:(1*pair[1]) };
+      }
+    }
+    var img = game_fetch_image(imagenum, alignment);
+    if (!img) {
+      game_print('There is no image number ' + imagenum + '.');
+      return;
+    }
+    img.x = pos.x;
+    img.y = pos.y;
+    if (dimensions) {
+      img.width = dimensions.width;
+      img.height = dimensions.height;
+    }
+    game_streamout_graph.push(img);
+    game_print('Drew image ' + imagenum + '.');
+    return;
+  }
+
+  if (val == 'gsmiley') {
+    if (!game_graphwin) {
+      game_print('There is no graphics window.');
+    }
+    else {
+      var obj = { special:'setcolor', color:'#FFF' };
+      game_streamout_graph.push(obj);
+      obj = { special:'fill' };
+      game_streamout_graph.push(obj);
+      obj = { special:'fill', color:'#EEE', x:24, y:8, width:148, height:96 };
+      game_streamout_graph.push(obj);
+      obj = { special:'fill', color:'#44F', x:32, y:16, width:32, height:32 };
+      game_streamout_graph.push(obj);
+      obj = { special:'fill', color:'#44F', x:132, y:16, width:32, height:32 };
+      game_streamout_graph.push(obj);
+      obj = { special:'fill', color:'#F08', x:64, y:80, width:68, height:16 };
+      game_streamout_graph.push(obj);
+      obj = { special:'fill', color:'#F08', x:48, y:64, width:100, height:16 };
+      game_streamout_graph.push(obj);
+      game_print('Cleared graphics window to white, drew a terrible smiley face.');
+    }
+    return;
+  }
+
   if (val == 'both') {
     if (!game_splitwin) {
       game_print('The story window is not currently split.');
@@ -697,6 +1103,32 @@ function game_parse(val) {
 
     var msg1 = game_generate_long_text(150, 'long line of text, in the primary window');
     var msg2 = game_generate_long_text(120, 'long line of text (although not quite as long) in the secondary window');
+
+    game_inputgen_left = 0;
+    game_inputgen_right = 0;
+    game_inputline_left = true;
+    game_inputline_right = true;
+    /* leave game_inputinitial_left/right as set */
+    var printtmp = game_print_left;
+    game_print_left = true;
+    game_print(printtmp ? msg1 : msg2);
+    game_print_left = false;
+    game_print(printtmp ? msg2 : msg1);
+    game_print_left = printtmp;
+    return;
+  }
+
+  if (val == 'bothtall' || val == 'tallboth' || val == 'bothpage' || val == 'pageboth') {
+    if (!game_splitwin) {
+      game_print('The story window is not currently split.');
+      return;
+    }
+
+    var arr = [];
+    for (var ix=0; ix<100; ix++)
+        arr.push('Line ' + ix + '...');
+    var msg1 = arr.join('\n') + '\nThat is all for the primary window.';
+    var msg2 = arr.join('\n') + '\nThat is all for the secondary window.';
 
     game_inputgen_left = 0;
     game_inputgen_right = 0;
@@ -765,7 +1197,7 @@ function game_parse(val) {
     game_inputinitial_right = null;
     game_statusmenu_from_left = game_print_left;
     var printtmp = game_print_left;
-    game_print('Select an option with the arrow keys; accept by hitting Return. (N, P, and Q will also work.) Waiting...');
+    game_print('Select an option with the arrow keys; accept by hitting Return. (N, P, and Q will also work. Or you can click on a menu line.) Waiting...');
     if (game_splitwin) {
       game_print_left = !game_print_left;
       game_print('Awaiting menu selection...');
@@ -791,16 +1223,12 @@ function game_parse(val) {
   }
 
   if (val == 'timer') {
-    if (game_timed_timer) {
+    if (game_timer_request) {
       game_print('One at a time, please.');
       return;
     }
     game_print('Waiting two seconds...');
-    var delayfunc = function() {
-      game_timed_timer = null;
-      GlkOte.extevent('timer');
-    };
-    game_timed_timer = window.setTimeout(delayfunc, 2*1000);
+    game_timer_request = 2000;
     return;
   }
 
@@ -873,6 +1301,24 @@ function game_parse(val) {
 
   if (val == 'version') {
     game_print(game_version());
+    return;
+  }
+
+  if (val == 'metric' || val == 'metrics') {
+    game_print('Window metrics (as computed by GlkOte):');
+    var ls = jQuery.map(game_metrics, function(val, key) { return key; });
+    ls.sort();
+    for (var ix=0; ix<ls.length; ix++) {
+      game_print('  ' + ls[ix] + ': ' + game_metrics[ls[ix]]);
+    }
+    return;
+  }
+
+  if (val == 'quit') {
+    /* This simulates the case where the VM has exited cleanly. */
+    game_print('Goodbye, goodbye, goodbye.');
+    GlkOte.warning('The simulated game session has ended.');
+    game_simulate_quit = true;
     return;
   }
 
