@@ -40,8 +40,7 @@ This is a demo, *not* a production-ready solution.
 
 - If you reload your browser window, RemGlk does not respond sensibly.
 
-- Window-size management is not handled consistently between GlkOte and
-  RemGlk. This screws up the status window layout.
+- If you resize your browser window, you get a GlkOte error.
 
     -----------------------------------------------------------------
 
