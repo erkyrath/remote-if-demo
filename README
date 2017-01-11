@@ -24,6 +24,27 @@ To try this...
    http://localhost:4000/
 - Press "log in", then "play the game".
 
+To try a game with graphics...
+
+- Download Sensory Jam:
+  http://eblong.com/zarf/glulx/sensory.blb
+- Also download the Python BlorbTool script:
+  http://eblong.com/zarf/blorb/blorbtool.py
+- Create a resource subdirectory in the static directory:
+  mkdir static/resource
+- Run BlorbTool to unpack the image data into the resource dir:
+  python blorbtool.py sensory.blb giload static/resource
+  (this will create files static/resource/pict-0.jpeg, etc)
+- Type:
+  python3 remote-if.py --debug --command='glulxer -ru http://localhost:4000/static/resource/ sensory.blb'
+
+The -ru argument tells the display library to fetch images using URLs of
+the form http://localhost:4000/static/resource/pict-0.jpeg. See the
+RemGlk docs: http://eblong.com/zarf/glk/remglk/docs.html
+
+(You might think that you could use the -rd argument to serve the files
+directly from the local file system. This does not work, because modern
+browsers will not allow an http: web page to load file: image URLs.)
 
 This is a demo, *not* a production-ready solution.
 
@@ -40,7 +61,8 @@ This is a demo, *not* a production-ready solution.
 
 - If you reload your browser window, RemGlk does not respond sensibly.
 
-- If you resize your browser window, you get a GlkOte error.
+- If you resize your browser window, you get a GlkOte error. Not sure
+  what's going on there.
 
     -----------------------------------------------------------------
 
