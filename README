@@ -61,9 +61,6 @@ This is a demo, *not* a production-ready solution.
 
 - If you reload your browser window, RemGlk does not respond sensibly.
 
-- If you resize your browser window, you get a GlkOte error. Not sure
-  what's going on there.
-
     -----------------------------------------------------------------
 
 Transcript-IF: Demonstrates accepting transcript recording from a
