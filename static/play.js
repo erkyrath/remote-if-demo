@@ -23,7 +23,6 @@ function callback_error(jqxhr, status, error) {
 };
 
 function callback_success(data, status, jqxhr) {
-    console.log('### success: ' + data.type);
     GlkOte.update(data);
 }
 
