@@ -1,22 +1,30 @@
-/* Dialog -- a Javascript load/save library for IF interfaces
+/* NameDialog -- a Javascript load/save library for IF interfaces
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2010-16 by Andrew Plotkin.
+ * This Javascript library is copyright 2017 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
- * This library lets you open a modal dialog box to select a "file" for saving
- * or loading data. The web page must have a <div> with id "windowport" (this
- * will be greyed out during the selection process, with the dialog box as a
- * child of the div). It should also have the dialog.css stylesheet loaded.
+ * This library lets you open a modal dialog box to select a filename for
+ * saving or loading data. The web page must have a <div> with id "windowport"
+ * (this will be greyed out during the selection process, with the dialog box
+ * as a child of the div). It should also have the dialog.css stylesheet
+ * loaded.
+ *
+ * This is an extremely simplified version of the dialog.js which is
+ * distributed with GlkOte. This version just prompts for a bare filename and
+ * returns it to the caller. It does not interact with localStorage or the
+ * local filesystem at all.
+ *
+ * (This simple behavior makes sense for talking to a RemGlk-based interpreter
+ * on the other side of a network connection. We can't know what files are
+ * available on the interpreter's end, so we just hand over a filename.)
  *
  * The primary function to call:
  *
  * Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog
  *
  */
-
-//### accept "return" keystroke for load-select box (already works in Chrome)
 
 /* Put everything inside the Dialog namespace. */
 
@@ -220,7 +228,7 @@ function defer_func(func)
   return window.setTimeout(func, 0.01*1000);
 }
 
-/* Event handler: The "Save" button.
+/* Event handler: The "Save" or "Load" button.
 */
 function evhan_accept_button(ev) {
     ev.preventDefault();
