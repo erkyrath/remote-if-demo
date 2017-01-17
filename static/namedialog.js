@@ -112,12 +112,10 @@ function dialog_open(tosave, usage, gameid, callback) {
     row.append('XXX'); // the caption will be replaced momentarily.
     form.append(row);
 
-    if (true) {
-        row = $('<div>', { id: dialog_el_id+'_input', 'class': 'DiaInput' });
-        form.append(row);
-        el = $('<input>', { id: dialog_el_id+'_infield', type: 'text', name: 'filename' });
-        row.append(el);
-    }
+    row = $('<div>', { id: dialog_el_id+'_input', 'class': 'DiaInput' });
+    form.append(row);
+    el = $('<input>', { id: dialog_el_id+'_infield', type: 'text', name: 'filename' });
+    row.append(el);
 
     row = $('<div>', { id: dialog_el_id+'_body', 'class': 'DiaBody' });
     form.append(row);
@@ -144,21 +142,18 @@ function dialog_open(tosave, usage, gameid, callback) {
     frame.append(dia);
     is_open = true;
 
-    /* Set the input focus to the input field or the selection box.
+    /* Set the input focus to the input field.
 
        MSIE is weird about when you can call focus(). The element has just been
        added to the DOM, and MSIE balks at giving it the focus right away. So
        we defer the call until after the javascript context has yielded control
        to the browser. 
     */
-    var focusfunc;
-    if (true) {
-        focusfunc = function() {
-            var el = $('#'+dialog_el_id+'_infield');
-            if (el.length) 
-                el.focus();
-        };
-    }
+    var focusfunc = function() {
+        var el = $('#'+dialog_el_id+'_infield');
+        if (el.length) 
+            el.focus();
+    };
     defer_func(focusfunc);
 }
 
