@@ -253,8 +253,7 @@ function evhan_cancel_button(ev) {
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
-    streaming: false,
-    open: dialog_open,
+    open: dialog_open
 };
 
 }();
