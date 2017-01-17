@@ -109,7 +109,10 @@ function dialog_open(tosave, usage, gameid, callback) {
     dia.append(form);
 
     row = $('<div>', { id: dialog_el_id+'_cap', 'class': 'DiaCaption' });
-    row.append('XXX'); // the caption will be replaced momentarily.
+    if (will_save)
+        row.append('Enter a filename to write:');
+    else
+        row.append('Enter a filename to read:');
     form.append(row);
 
     row = $('<div>', { id: dialog_el_id+'_input', 'class': 'DiaInput' });
@@ -172,24 +175,6 @@ function dialog_close() {
 
     is_open = false;
     dialog_callback = null;
-}
-
-/* Set the text caption in the dialog. (There are two, actually, above
-   and below the selection box.)
-*/
-function set_caption(msg, isupper) {
-    var elid = (isupper ? dialog_el_id+'_cap' : dialog_el_id+'_cap2');
-    var el = $('#'+elid);
-    if (!el.length)
-        return;
-
-    if (!msg) {
-        el.hide();
-    }
-    else {
-        el.text(msg);
-        el.show();
-    }
 }
 
 /* Pick a human-readable label for the usage. This will be displayed in the
