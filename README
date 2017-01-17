@@ -56,8 +56,7 @@ This is a demo, *not* a production-ready solution.
   long as they run. There is currently no reaping of abandoned games,
   so the server will eventually consume all RAM and choke.
 
-- The file dialog module is not compatible with RemGlk, so save/restore
-  commands will fail.
+- File dialog operations can only prompt for a bare filename.
 
 - If you reload your browser window, RemGlk does not respond sensibly.
 
