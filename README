@@ -56,8 +56,8 @@ This is a demo, *not* a production-ready solution.
   long as they run. There is currently no reaping of abandoned games,
   so the server will eventually consume all RAM and choke.
 
-- Something is screwy with the file-selection prompts. Trying "save"
-  or "restore" will cause a GlkOte error and fail.
+- The file dialog module is not compatible with RemGlk, so save/restore
+  commands will fail.
 
 - If you reload your browser window, RemGlk does not respond sensibly.
 
