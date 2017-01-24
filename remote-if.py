@@ -4,6 +4,8 @@
 Remote-IF script. When run, this brings up a Tornado web server which
 allows clients to play an IF game via RemGlk / GlkOte.
 
+This supports both AJAX and websocket messages from GlkOte.
+
 Written by Andrew Plotkin. This script is in the public domain.
 """
 
@@ -129,6 +131,7 @@ class PlayHandler(tornado.web.RequestHandler):
         self.set_header("Content-Type", "application/json; charset=UTF-8")
 
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
+    # Handle websocket connections from GlkOte.
 
     def open(self):
         sessionid = self.get_secure_cookie('sessionid')
@@ -148,7 +151,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not session.proc:
             session.launch()
 
+        # Now we wait for the first message from GlkOte.
+
     def on_message(self, msg):
+        # Pass message from the websocket to the game session.
         session = self.application.sessions.get(self.sessionid)
         if not session:
             raise Exception('No session found')
@@ -156,6 +162,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         session.input(msg.encode('utf-8'))
         
     def on_close(self):
+        # Websocket is gone; kill the game session.
+        # (It would be nicer to wait a few minutes to see if the
+        # session comes back via a new websocket.)
+        
         session = self.application.sessions.get(self.sessionid)
         if not session:
             raise Exception('No session found')
@@ -164,6 +174,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         del self.application.sessions[self.sessionid]
 
     def session_callback(self, msg):
+        # Pass message from the game session to the websocket.
         self.write_message(msg)
 
 class Session:
