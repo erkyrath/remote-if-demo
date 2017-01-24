@@ -1,5 +1,5 @@
 /*
-  Client-side code for Remote-IF demo.
+  Client-side code for Remote-IF demo (AJAX version).
 
   Written by Andrew Plotkin. This script is in the public domain.
  */

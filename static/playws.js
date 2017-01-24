@@ -1,5 +1,5 @@
 /*
-  Client-side code for Remote-IF demo.
+  Client-side code for Remote-IF demo (websocket version).
 
   Written by Andrew Plotkin. This script is in the public domain.
  */
@@ -16,7 +16,7 @@ function open_websocket() {
     try {
         /* If this is an https: URL, we'd want to use wss: instead of wd: */
         var url = 'ws://' + window.location.host + '/websocket';
-        console.log('Creating websocket: ' + url);
+        GlkOte.log('Creating websocket: ' + url);
         websocket = new WebSocket(url);
     }
     catch (ex) {
@@ -43,7 +43,6 @@ function callback_websocket_close(ev) {
 
 function callback_websocket_message(ev) {
     var obj = JSON.parse(ev.data);
-    console.log('### message:', obj);
     GlkOte.update(obj);
 }
 
