@@ -24,6 +24,10 @@ To try this...
    http://localhost:4000/
 - Press "log in", then "play the game".
 
+The connection between GlkOte and the server is handled with AJAX requests.
+If you add "--connect=ws", it will use Websocket requests instead. They
+both work; I just wanted to provide sample code for both.
+
 To try a game with graphics...
 
 - Download Sensory Jam:
