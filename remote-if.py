@@ -35,7 +35,7 @@ tornado.options.define(
 
 tornado.options.define(
     'connect', type=str, default='ajax',
-    help='connection method: "ajax" or "ws" (default is "ajax")')
+    help='connection method: "ajax" or "ws"')
 
 # Parse 'em up.
 tornado.options.parse_command_line()
