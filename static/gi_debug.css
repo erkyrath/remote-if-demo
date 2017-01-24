@@ -1,0 +1,130 @@
+/* Debug overlay default stylesheet
+ * Designed by Andrew Plotkin <erkyrath@eblong.com>
+ * <http://eblong.com/zarf/glk/glkote.html>
+ * 
+ * This CSS stylesheet is in the public domain. Do whatever you want
+ * with it.
+ */
+
+#gidebug {
+  position: absolute;
+  right: 40px;
+  top: 40px;
+  width: 300px;
+  height: 200px;
+  background: #AAA;
+  -webkit-box-shadow: 1px 1px 15px #222;
+  -moz-box-shadow: 1px 1px 15px #222;
+  border-radius: 10px;
+
+  font-family: "Source Serif Pro", "Cambria", "Georgia", serif;
+  font-size: 14px;
+}
+
+#gidebug .GiDebugHeader {
+  position: absolute;
+  width: 100%;
+  top: 0px;
+  height: 20px;
+  background: #BBB;
+
+  color: #666;
+  text-align: center;
+  padding-top: 3px;
+  font-size: 11px;
+}
+
+#gidebug .GiDebugFooter {
+  position: absolute;
+  width: 100%;
+  bottom: 0px;
+  height: 20px;
+  background: #BBB;
+}
+
+#gidebug .GiDebugRightButton {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  right: 0px;
+  width: 40px;
+  background: #AAA;
+}
+
+#gidebug .GiDebugLeftButton {
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
+  left: 0px;
+  width: 40px;
+  background: #AAA;
+}
+
+#gidebug .GiDebugBody {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 20px;
+  bottom: 20px;
+  background: #EEE;
+}
+
+#gidebug .GiDebugText {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 24px;
+  background: white;
+  padding: 8px;
+  overflow: scroll;   /* vertical scrollbar is mandatory */
+  overflow-x: hidden; /* but horizontal scrollbar is forbidden */
+}
+
+#gidebug .GiDebugTextLineBold {
+  font-weight: bold;
+}
+
+#gidebug .GiDebugPrompt {
+  position: absolute;
+  left: 8px;
+  bottom: -4px;
+  height: 24px;
+  font-weight: bold;
+}
+
+#gidebug .GiDebugInput {
+  position: absolute;
+  left: 20px;
+  right: 0px;
+  height: 24px;
+  bottom: 0px;
+
+  background: none;
+  border: none;
+  margin: 0px;
+  padding: 0px;
+  outline-width: 0px;
+  outline-style: none;
+
+  font-family: "Source Serif Pro", "Cambria", "Georgia", serif;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+#gidebug .GiDebugRoundSE {
+  border-bottom-right-radius: 10px;
+}
+
+#gidebug .GiDebugRoundNE {
+  border-top-right-radius: 10px;
+}
+
+#gidebug .GiDebugRoundSW {
+  border-bottom-left-radius: 10px;
+}
+
+#gidebug .GiDebugRoundNW {
+  border-top-left-radius: 10px;
+}
+
