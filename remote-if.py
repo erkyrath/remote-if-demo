@@ -37,6 +37,10 @@ tornado.options.define(
     'connect', type=str, default='ajax',
     help='connection method: "ajax" or "ws"')
 
+tornado.options.define(
+    'gidebug', type=bool,
+    help='activate the glkote debug console')
+
 # Parse 'em up.
 tornado.options.parse_command_line()
 opts = tornado.options.options
@@ -103,7 +107,7 @@ class PlayHandler(tornado.web.RequestHandler):
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
             
-        self.render('play.html', connecttype=opts.connect)
+        self.render('play.html', connecttype=opts.connect, gidebug=opts.gidebug)
         
     @tornado.gen.coroutine
     def post(self):

@@ -32,6 +32,10 @@ Game = {
 
 /* The page-ready handler. Like onload(), but better, I'm told. */
 $(document).ready(function() {
+    if (use_gidebug) {
+        Game.debug_commands = true;
+        Game.debug_console_open = true;
+    }
     GlkOte.init();
 });
 
