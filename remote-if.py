@@ -33,12 +33,19 @@ tornado.options.define(
     'command', type=str,
     help='shell command to run a RemGlk game')
 
+tornado.options.define(
+    'connect', type=str, default='ajax',
+    help='connection method: "ajax" or "ws" (default is "ajax")')
+
 # Parse 'em up.
 tornado.options.parse_command_line()
 opts = tornado.options.options
 
 if not opts.command:
     raise Exception('Must supply --command argument')
+
+if opts.connect not in ('ajax', 'ws'):
+    raise Exception('The --connect argument must be "ajax" or "ws"')
 
 # Define application options which are always set.
 appoptions = {
@@ -96,7 +103,7 @@ class PlayHandler(tornado.web.RequestHandler):
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
             
-        self.render('play.html')
+        self.render('play.html', connecttype=opts.connect)
         
     @tornado.gen.coroutine
     def post(self):

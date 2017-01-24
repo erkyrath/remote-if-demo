@@ -27,7 +27,11 @@ body {
 <script src="{{ static_url('jquery-1.12.4.min.js') }}" type="text/javascript"></script>
 <script src="{{ static_url('glkote.js') }}" type="text/javascript"></script>
 <script src="{{ static_url('namedialog.js') }}" type="text/javascript"></script>
+{% if connecttype == 'ajax' %}
 <script src="{{ static_url('play.js') }}" type="text/javascript"></script>
+{% elif connecttype == 'ws' %}
+<script src="{{ static_url('playws.js') }}" type="text/javascript"></script>
+{% end %}
 
 </head>
 <body>
