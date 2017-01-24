@@ -142,7 +142,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             self.application.log.info('Created session object %s', session)
 
         self.sessionid = sessionid
-        self.application.log.info('### conn open: %s', self.sessionid);
 
         # Start the game process.
         session.callback = self.session_callback
@@ -157,7 +156,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         session.input(msg.encode('utf-8'))
         
     def on_close(self):
-        self.application.log.info('### conn closed: %s', self.sessionid);
         session = self.application.sessions.get(self.sessionid)
         if not session:
             raise Exception('No session found')
