@@ -14,6 +14,7 @@ import binascii
 import shlex
 
 import tornado.web
+import tornado.websocket
 import tornado.gen
 import tornado.ioloop
 import tornado.options
@@ -118,8 +119,6 @@ class PlayHandler(tornado.web.RequestHandler):
 
         # This logic relies on the proper behavior of the RemGlk library:
         # that it produces exactly one JSON output for every JSON input.
-        # Timer events will make a mess of that logic, but RemGlk doesn't
-        # support timers yet.
         
         session.input(self.request.body)
         res = yield tornado.gen.Wait(callkey)
@@ -128,6 +127,43 @@ class PlayHandler(tornado.web.RequestHandler):
 
         self.write(res)
         self.set_header("Content-Type", "application/json; charset=UTF-8")
+
+class WebSocketHandler(tornado.websocket.WebSocketHandler):
+
+    def open(self):
+        sessionid = self.get_secure_cookie('sessionid')
+        if not sessionid:
+            raise Exception('You are not logged in')
+        
+        session = self.application.sessions.get(sessionid)
+        if not session:
+            session = Session(self.application, sessionid)
+            self.application.sessions[sessionid] = session
+            self.application.log.info('Created session object %s', session)
+
+        self.sessionid = sessionid
+        self.application.log.info('### conn open: %s', self.sessionid);
+
+        # Start the game process.
+        session.callback = self.session_callback
+        if not session.proc:
+            session.launch()
+
+    def on_message(self, msg):
+        self.application.log.info('### msg %s: %r', self.sessionid, msg);
+        session = self.application.sessions.get(self.sessionid)
+        if not session:
+            raise Exception('No session found')
+        
+        session.input(msg.encode('utf-8'))
+        
+    def on_close(self):
+        self.application.log.info('### conn closed: %s', self.sessionid);
+        del self.application.sessions[self.sessionid]
+
+    def session_callback(self, msg):
+        self.application.log.info('### game output %s: %s', self.sessionid, msg);
+        self.write_message(msg)
 
 class Session:
     """The Session class represents a logged-in player. The Session contains
@@ -191,6 +227,7 @@ class Session:
 handlers = [
     (r'/', MainHandler),
     (r'/play', PlayHandler),
+    (r'/websocket', WebSocketHandler),
 ]
 
 class MyApplication(tornado.web.Application):
