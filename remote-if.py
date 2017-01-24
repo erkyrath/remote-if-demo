@@ -150,7 +150,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             session.launch()
 
     def on_message(self, msg):
-        self.application.log.info('### msg %s: %r', self.sessionid, msg);
         session = self.application.sessions.get(self.sessionid)
         if not session:
             raise Exception('No session found')
@@ -159,10 +158,14 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         
     def on_close(self):
         self.application.log.info('### conn closed: %s', self.sessionid);
+        session = self.application.sessions.get(self.sessionid)
+        if not session:
+            raise Exception('No session found')
+        
+        session.close()
         del self.application.sessions[self.sessionid]
 
     def session_callback(self, msg):
-        self.application.log.info('### game output %s: %s', self.sessionid, msg);
         self.write_message(msg)
 
 class Session:
@@ -192,6 +195,13 @@ class Session:
         self.proc.stdout.read_until_close(
             self.gameclosed, self.gameread)
 
+    def close(self):
+        if not self.proc:
+            return
+        self.proc.stdin.close()
+        self.proc = None
+        self.linebuffer = None
+
     def input(self, msg):
         """Pass an update (bytes) along to the game.
         """
@@ -202,6 +212,10 @@ class Session:
         We accumulate output until it's a complete JSON message, and then
         trigger the waiting callback.
         """
+        if self.linebuffer is None:
+            # Closed, never mind.
+            return
+        
         self.linebuffer.extend(msg.splitlines())
         testjson = ''
         for ix in range(len(self.linebuffer)):
