@@ -204,6 +204,8 @@ class Session:
         return '<Session "%s">' % (self.id.decode(),)
 
     def launch(self):
+        """Start the interpreter subprocess.
+        """
         self.log.info('Launching game for %s', self)
         
         args = shlex.split(opts.command)
@@ -216,6 +218,10 @@ class Session:
             self.gameclosed, self.gameread)
 
     def close(self):
+        """Shut down the interpreter subprocess. We call this if the GlkOte
+        library disconnects. (We can detect that for a websocket connection,
+        but not for an AJAX connection.)
+        """
         if not self.proc:
             return
         self.proc.stdin.close()
