@@ -181,6 +181,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not session:
             raise Exception('No session found')
         
+        self.application.log.info('Session %s has disconnected', session)
         session.close()
         del self.application.sessions[self.sessionid]
 
