@@ -28,6 +28,7 @@ function callback_success(data, status, jqxhr) {
 
 Game = {
     accept: accept,
+    spacing: 4
 };
 
 /* The page-ready handler. Like onload(), but better, I'm told. */
