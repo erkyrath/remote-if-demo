@@ -118,8 +118,8 @@ This is a demo, *not* a production-ready solution.
 
 These scripts require:
 
-  Python 3 (tested with Python 3.3 and up)
-  Tornado web server 3.1.1 or later
+  Python 3 (tested with Python 3.9)
+  Tornado web server (tested with Tornado 6.1)
     http://www.tornadoweb.org/
   (For remote-if.py) An application (such as Glulxe) compiled with
     RemGlk 0.2.1 or later
@@ -129,5 +129,5 @@ This package contains the following additional libraries:
 
   jQuery JavaScript Library v1.12.4
     http://jquery.com/  (MIT license)
-  GlkOte 2.0.0 (modified for jQuery)
+  GlkOte 2.2.4
     http://eblong.com/zarf/glk/glkote.html  (MIT license)
