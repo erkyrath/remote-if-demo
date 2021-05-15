@@ -90,14 +90,19 @@ I/O updates, the server can reflect them out to viewers.
 To use this, install Tornado (version 3) and launch this script:
   python3 transcript-if.py
 
-Then open transcript-if.html. (Or you can run Quixe, adding
-  recording_url: 'http://localhost:4000/record',
-to the game_options object in play.html.) Game updates will be received
-by the server and printed to stdout.
+Then open http://localhost:4000/transcript-if.html. Game updates will be
+received by the server and printed to stdout.
 
 You can then visit http://localhost:4000/ in a web browser to see
 a list of connected games. Select one, and you will see the current
 game state; it will update as the original game receives input.
+
+You could run Quixe this way if you replace transcript-if.html with
+Quixe's play.html file. You'd have to add
+  recording_url: 'http://localhost:4000/record',
+to the game_options object in play.html. You'd also need to change all
+of the links in play.html (JS, CSS) to refer to the static/ subdirectory.
+(See transcript-if.html.)
 
 This is a demo, *not* a production-ready solution.
 
