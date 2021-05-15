@@ -52,6 +52,19 @@ class MainHandler(tornado.web.RequestHandler):
         ls.sort(key=lambda val:val.launched)
         self.render('repeat-menu.html', games=ls)
 
+class GameHandler(tornado.web.RequestHandler):
+    # Handle the "/transcript-if.html" URL: the origin game
+
+    data = None
+    
+    @tornado.gen.coroutine
+    def get(self):
+        if GameHandler.data is None:
+            fl = open('transcript-if.html')
+            GameHandler.data = fl.read()
+            fl.close()
+        self.write(GameHandler.data)
+
 class RepeatHandler(tornado.web.RequestHandler):
     # Handle the "/repeat/SID" URL: the view of a game
     
@@ -179,7 +192,6 @@ class SocketHandler(tornado.websocket.WebSocketHandler):
     cid = None
     
     def open(self, sid):
-        sid = sid.decode()  # It comes in as bytes?
         if sid not in self.application.games:
             raise tornado.web.HTTPError(404, 'No such session ID')
         self.sid = sid
@@ -250,6 +262,7 @@ class Connection:
 # Core handlers.
 handlers = [
     (r'/', MainHandler),
+    (r'/transcript-if.html', GameHandler),
     (r'/record', RecordHandler),
     (r'/repeat/([0-9]+)', RepeatHandler),
     (r'/websocket/([0-9]+)', SocketHandler),
