@@ -289,7 +289,5 @@ application = MyApplication(
 # Boilerplate to launch the web server.
 application.init_app()
 application.listen(opts.port)
-tornado.ioloop.IOLoop.instance().start()
+tornado.ioloop.IOLoop.current().start()
 
-
-    
