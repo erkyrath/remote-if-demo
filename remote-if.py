@@ -68,13 +68,11 @@ for key in [ 'debug' ]:
 class MainHandler(tornado.web.RequestHandler):
     # Handle the "/" URL: the login screen
     
-    @tornado.gen.coroutine
-    def get(self):
+    async def get(self):
         sessionid = self.get_secure_cookie('sessionid')
         self.render('main.html', sessionid=sessionid)
         
-    @tornado.gen.coroutine
-    def post(self):
+    async def post(self):
         if self.get_argument('signin', None):
             # Create a random sessionid string
             sessionid = binascii.hexlify(os.urandom(16)) # bytes, not string
@@ -95,8 +93,7 @@ class PlayHandler(tornado.web.RequestHandler):
         # we could embed {{ xsrf_token }} in the play.html template.)
         pass
     
-    @tornado.gen.coroutine
-    def get(self):
+    async def get(self):
         sessionid = self.get_secure_cookie('sessionid')
         if not sessionid:
             raise Exception('You are not logged in')
@@ -109,8 +106,7 @@ class PlayHandler(tornado.web.RequestHandler):
             
         self.render('play.html', connecttype=opts.connect, gidebug=opts.gidebug)
         
-    @tornado.gen.coroutine
-    def post(self):
+    async def post(self):
         #print(self.request.body.decode())
         sessionid = self.get_secure_cookie('sessionid')
         if not sessionid:
