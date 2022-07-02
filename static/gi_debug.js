@@ -1,8 +1,10 @@
+'use strict';
+
 /* GiDebug -- a debug overlay interface for GlkOte
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2017 by Andrew Plotkin.
+ * This Javascript library is copyright 2017-20 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library adds a simple debug console, overlaid onto the GlkOte
@@ -35,7 +37,7 @@
 
 /* Put everything inside the GiDebug namespace. */
 
-GiDebug = function() {
+var GiDebug = function() {
 
 var debug_el_id = 'gidebug';
 
@@ -73,7 +75,7 @@ function debug_open()
     if (!rootel.length)
         throw new Error('GiDebug: unable to find root element #' + root_el_id + '.');
 
-    dia = $('<div>', { id: debug_el_id });
+    var dia = $('<div>', { id: debug_el_id });
     var el, subel;
 
     function set_drag_effect(el, tag) {
@@ -181,12 +183,12 @@ var regex_long_whitespace = new RegExp('  +', 'g'); /* two or more spaces */
 /* Given a run of N spaces (N >= 2), return N-1 non-breaking spaces plus
    a normal one. */
 function func_long_whitespace(match) {
-  var len = match.length;
-  if (len == 1)
-    return ' ';
-  /* Evil trick I picked up from Prototype. Gives len-1 copies of NBSP. */
-  var res = new Array(len).join('\xa0');
-  return res + ' ';
+    var len = match.length;
+    if (len == 1)
+        return ' ';
+    /* Evil trick I picked up from Prototype. Gives len-1 copies of NBSP. */
+    var res = new Array(len).join('\xa0');
+    return res + ' ';
 }
 
 function evhan_input(ev)
@@ -339,6 +341,7 @@ function evhan_dragstop(ev, ui)
 /* End of GiDebug namespace function. Return the object which will
    become the GiDebug global. */
 return {
+    classname: 'GiDebug',
     init: debug_init,
     open: debug_open,
     input: debug_input,
