@@ -107,7 +107,7 @@ class PlayHandler(tornado.web.RequestHandler):
         self.render('play.html', connecttype=opts.connect, gidebug=opts.gidebug)
         
     async def post(self):
-        #print(self.request.body.decode())
+        print('REQ', self.request.body.decode()) ###
         sessionid = self.get_secure_cookie('sessionid')
         if not sessionid:
             raise Exception('You are not logged in')
@@ -119,20 +119,12 @@ class PlayHandler(tornado.web.RequestHandler):
         if not session.proc:
             session.launch()
 
-        # Create a callback object. We'll block on this, and the game's
-        # output handler will trigger it when the response is complete.
-        if session.callback is not None:
-            raise Exception('Already has a callback')
-        callkey = object()
-        session.callback = yield tornado.gen.Callback(callkey)
-
         # This logic relies on the proper behavior of the RemGlk library:
         # that it produces exactly one JSON output for every JSON input.
         
         session.input(self.request.body)
-        res = yield tornado.gen.Wait(callkey)
-        #print(res.decode())
-        session.callback = None
+        res = await session.gameread()
+        print('RES', res.decode()) ###
 
         self.write(res)
         self.set_header("Content-Type", "application/json; charset=UTF-8")
@@ -195,7 +187,6 @@ class Session:
         self.id = sessionid
         self.proc = None
         self.linebuffer = []
-        self.callback = None
         
     def __repr__(self):
         return '<Session "%s">' % (self.id.decode(),)
@@ -211,8 +202,6 @@ class Session:
             close_fds=True,
             stdin=tornado.process.Subprocess.STREAM,
             stdout=tornado.process.Subprocess.STREAM)
-        self.proc.stdout.read_until_close(
-            self.gameclosed, self.gameread)
 
     def close(self):
         """Shut down the interpreter subprocess. We call this if the GlkOte
@@ -230,34 +219,35 @@ class Session:
         """
         self.proc.stdin.write(msg)
 
-    def gameread(self, msg):
-        """Callback for game process output (which will be bytes).
+    async def gameread(self):
+        """Await the next game response.
         We accumulate output until it's a complete JSON message, and then
-        trigger the waiting callback.
+        return it.
         """
         if self.linebuffer is None:
             # Closed, never mind.
-            return
+            return None
         
-        self.linebuffer.extend(msg.splitlines())
-        testjson = ''
-        for ix in range(len(self.linebuffer)):
-            testjson += self.linebuffer[ix].decode()
-            try:
-                json.loads(testjson)
-                res = b'\n'.join(self.linebuffer[0:ix+1])
-                self.linebuffer[0:ix+1] = []
-                if self.callback is not None:
-                    self.callback(res)
-                return
-            except:
-                continue
+        while True:
+            testjson = ''
+            for ix in range(len(self.linebuffer)):
+                testjson += self.linebuffer[ix].decode()
+                try:
+                    json.loads(testjson)
+                    res = b'\n'.join(self.linebuffer[0:ix+1])
+                    self.linebuffer[0:ix+1] = []
+                    return res
+                except:
+                    continue
+                
+            msg = await self.proc.stdout.read_bytes(1024, partial=True)
+            self.linebuffer.extend(msg.splitlines())
 
-    def gameclosed(self, msg):
-        """Callback for game process termination. (Technically, EOF on
-        the game's stdout.)
-        """
-        self.log.info('Game has terminated!')
+    #def gameclosed(self, msg):
+    #    """Callback for game process termination. (Technically, EOF on
+    #    the game's stdout.)
+    #    """
+    #    self.log.info('Game has terminated!')
     
         
 # Core handlers.
