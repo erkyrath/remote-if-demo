@@ -1,8 +1,10 @@
+'use strict';
+
 /* NameDialog -- a Javascript load/save library for IF interfaces
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
- * This Javascript library is copyright 2017 by Andrew Plotkin.
+ * This Javascript library is copyright 2017-22 by Andrew Plotkin.
  * It is distributed under the MIT license; see the "LICENSE" file.
  *
  * This library lets you open a modal dialog box to select a filename for
@@ -26,9 +28,11 @@
  *
  */
 
-/* Put everything inside the Dialog namespace. */
+/* All state is contained in DialogClass. */
+var DialogClass = function() {
 
-Dialog = function() {
+var GlkOte = null; /* imported API object -- for GlkOte.log */
+var inited = false;
 
 var dialog_el_id = 'dialog';
 
@@ -38,6 +42,41 @@ var will_save; /* is this a save dialog? */
 var cur_usage; /* a string representing the file's category */
 var cur_usage_name; /* the file's category as a human-readable string */
 var cur_gameid; /* a string representing the game */
+
+/* Dialog.init(iface) -- initialize the library */
+function dialog_init(iface) {
+    if (iface && iface.dom_prefix) {
+        dialog_el_id = iface.dom_prefix;
+    }
+    
+    if (iface && iface.GlkOte) {
+        GlkOte = iface.GlkOte;
+    }
+    if (!GlkOte) {
+        /* Look in the global environment. */
+        GlkOte = window.GlkOte;
+    }
+    if (!GlkOte) {
+        throw new Error('Dialog: no GlkOte interface!');
+    }
+
+    inited = true;
+}
+
+/* Dialog.inited() -- returns whether the library is initialized */
+function dialog_inited() {
+    return inited;
+}
+    
+/* Dialog.getlibrary() -- return the library interface object that we were passed or created.
+*/
+function dialog_get_library(val) {
+    switch (val) {
+        case 'GlkOte': return GlkOte;
+    }
+    /* Unrecognized library name. */
+    return null;
+}
 
 /* Dialog.open(tosave, usage, gameid, callback) -- open a file-choosing dialog
  *
@@ -253,9 +292,19 @@ function evhan_cancel_button(ev) {
 /* End of Dialog namespace function. Return the object which will
    become the Dialog global. */
 return {
+    classname: 'Dialog',
+    init: dialog_init,
+    inited: dialog_inited,
+    getlibrary: dialog_get_library,
     open: dialog_open
 };
 
-}();
+};
+
+/* Dialog is an instance of DialogClass, ready to init. */
+var Dialog = new DialogClass();
+
+// Node-compatible behavior
+try { exports.Dialog = Dialog; exports.DialogClass = DialogClass; } catch (ex) {};
 
 /* End of Dialog library. */
