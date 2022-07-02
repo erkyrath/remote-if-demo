@@ -146,20 +146,23 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.sessionid = sessionid
 
         # Start the game process.
-        session.callback = self.session_callback
         if not session.proc:
             session.launch()
 
         # Now we wait for the first message from GlkOte.
 
-    def on_message(self, msg):
+    async def on_message(self, msg):
         # Pass message from the websocket to the game session.
         session = self.application.sessions.get(self.sessionid)
         if not session:
             raise Exception('No session found')
         
         session.input(msg.encode('utf-8'))
-        
+
+        msg = await session.gameread()
+        # Pass message from the game session to the websocket.
+        self.write_message(msg)
+
     def on_close(self):
         # Websocket is gone; kill the game session.
         # (It would be nicer to wait a few minutes to see if the
@@ -172,10 +175,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.log.info('Session %s has disconnected', session)
         session.close()
         del self.application.sessions[self.sessionid]
-
-    def session_callback(self, msg):
-        # Pass message from the game session to the websocket.
-        self.write_message(msg)
 
 class Session:
     """The Session class represents a logged-in player. The Session contains
