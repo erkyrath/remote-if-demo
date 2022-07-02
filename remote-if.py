@@ -240,7 +240,7 @@ class Session:
                 except:
                     continue
                 
-            msg = await self.proc.stdout.read_bytes(1024, partial=True)
+            msg = await self.proc.stdout.read_until('\n')
             self.linebuffer.extend(msg.splitlines())
 
     #def gameclosed(self, msg):
