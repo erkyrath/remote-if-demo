@@ -107,7 +107,7 @@ class PlayHandler(tornado.web.RequestHandler):
         self.render('play.html', connecttype=opts.connect, gidebug=opts.gidebug)
         
     async def post(self):
-        print('REQ', self.request.body.decode()) ###
+        #print('REQ', self.request.body.decode())
         sessionid = self.get_secure_cookie('sessionid')
         if not sessionid:
             raise Exception('You are not logged in')
@@ -124,7 +124,7 @@ class PlayHandler(tornado.web.RequestHandler):
         
         session.input(self.request.body)
         res = await session.gameread()
-        print('RES', res.decode()) ###
+        #print('RES', res.decode())
 
         self.write(res)
         self.set_header("Content-Type", "application/json; charset=UTF-8")
