@@ -157,11 +157,14 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not session:
             raise Exception('No session found')
         
+        #print('REQ', msg)
         session.input(msg.encode('utf-8'))
 
-        msg = await session.gameread()
+        res = await session.gameread()
+        #print('RES', res.decode())
+        
         # Pass message from the game session to the websocket.
-        self.write_message(msg)
+        self.write_message(res)
 
     def on_close(self):
         # Websocket is gone; kill the game session.
