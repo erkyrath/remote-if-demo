@@ -122,12 +122,12 @@ These scripts require:
   Tornado web server (tested with Tornado 6.1)
     http://www.tornadoweb.org/
   (For remote-if.py) An application (such as Glulxe) compiled with
-    RemGlk 0.2.1 or later
+    RemGlk 0.3.0 or later
     http://eblong.com/zarf/glk/
 
 This package contains the following additional libraries:
 
   jQuery JavaScript Library v1.12.4
     http://jquery.com/  (MIT license)
-  GlkOte 2.2.4
+  GlkOte 2.3.2
     http://eblong.com/zarf/glk/glkote.html  (MIT license)
