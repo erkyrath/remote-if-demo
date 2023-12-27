@@ -21,9 +21,15 @@ import tornado.gen
 import tornado.ioloop
 import tornado.options
 
+from blorbtool import BlorbFile
+
 tornado.options.define(
     'port', type=int, default=4000,
     help='port number to listen on')
+
+tornado.options.define(
+    'address', type=str, default='localhost',
+    help='address to listen on')
 
 tornado.options.define(
     'debug', type=bool,
@@ -32,6 +38,10 @@ tornado.options.define(
 tornado.options.define(
     'command', type=str,
     help='shell command to run a RemGlk game')
+
+tornado.options.define(
+    'game', type=str,
+    help='Game file to run')
 
 tornado.options.define(
     'connect', type=str, default='ajax',
@@ -64,6 +74,18 @@ for key in [ 'debug' ]:
     val = getattr(opts, key)
     if val is not None:
         appoptions[key] = val
+
+if opts.game:
+    blorbfile = BlorbFile(opts.game)
+    args = [
+        os.path.realpath(opts.command),
+        '-ru', 'http://' + opts.address + ':' + str(opts.port) + '/resource/',
+        opts.game,
+    ]
+    cwd = os.path.dirname(opts.game)
+else:
+    args = shlex.split(opts.command)
+    cwd = None
 
 class MainHandler(tornado.web.RequestHandler):
     # Handle the "/" URL: the login screen
@@ -179,6 +201,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         session.close()
         del self.application.sessions[self.sessionid]
 
+class ResourcesHandler(tornado.web.RequestHandler):
+    # Handle the "/resource" URL
+
+    async def get(self, *args, **kwargs):
+        type = str.encode(args[0].capitalize())
+        num = int(args[1])
+        chunk = blorbfile.usagemap.get((type, num))
+        self.write(chunk.data())
+        # self.set_header("Content-Type", "image/" + str(chunk.type).lower())
+
 class Session:
     """The Session class represents a logged-in player. The Session contains
     the link to the RemGlk/Glulxe subprocess.
@@ -198,9 +230,9 @@ class Session:
         """
         self.log.info('Launching game for %s', self)
         
-        args = shlex.split(opts.command)
         self.proc = tornado.process.Subprocess(
             args,
+            cwd=cwd,
             close_fds=True,
             stdin=tornado.process.Subprocess.STREAM,
             stdout=tornado.process.Subprocess.STREAM)
@@ -257,6 +289,7 @@ handlers = [
     (r'/', MainHandler),
     (r'/play', PlayHandler),
     (r'/websocket', WebSocketHandler),
+    (r'/resource/(\w+)-(\d+)\.(\w+)', ResourcesHandler),
 ]
 
 class MyApplication(tornado.web.Application):
@@ -276,6 +309,6 @@ application = MyApplication(
 
 # Boilerplate to launch the web server.
 application.init_app()
-application.listen(opts.port)
+application.listen(opts.port, opts.address)
 tornado.ioloop.IOLoop.current().start()
 

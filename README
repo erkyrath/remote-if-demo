@@ -57,6 +57,9 @@ RemGlk docs: http://eblong.com/zarf/glk/remglk/docs.html
 directly from the local file system. This does not work, because modern
 browsers will not allow an http: web page to load file: image URLs.)
 
+Alternatively just use --game option:
+python remote-if.py --debug --command=glulxer --game=sensory.blb
+
 This is a demo, *not* a production-ready solution.
 
 - This has no database component, nor any other sort of persistence.
