@@ -188,7 +188,6 @@ class Session:
         self.log = app.log
         self.id = sessionid
         self.proc = None
-        self.linebuffer = []
         
     def __repr__(self):
         return '<Session "%s">' % (self.id.decode(),)
@@ -214,7 +213,6 @@ class Session:
             return
         self.proc.stdin.close()
         self.proc = None
-        self.linebuffer = None
 
     def input(self, msg):
         """Pass an update (bytes) along to the game.
@@ -223,27 +221,15 @@ class Session:
 
     async def gameread(self):
         """Await the next game response.
-        We accumulate output until it's a complete JSON message, and then
-        return it.
         """
-        if self.linebuffer is None:
+        if self.proc is None:
             # Closed, never mind.
             return None
-        
-        while True:
-            testjson = ''
-            for ix in range(len(self.linebuffer)):
-                testjson += self.linebuffer[ix].decode()
-                try:
-                    json.loads(testjson)
-                    res = b'\n'.join(self.linebuffer[0:ix+1])
-                    self.linebuffer[0:ix+1] = []
-                    return res
-                except:
-                    continue
-                
-            msg = await self.proc.stdout.read_until(b'\n')
-            self.linebuffer.extend(msg.splitlines())
+
+        try:
+            return await self.proc.stdout.read_until(b'\n\n')
+        except tornado.iostream.StreamClosedError:
+            return b''
 
     #def gameclosed(self, msg):
     #    """Callback for game process termination. (Technically, EOF on
