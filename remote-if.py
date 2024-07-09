@@ -262,7 +262,7 @@ class SingleSession(Session):
         self.id = sessionid
         self.savedir = os.path.join('savedir', self.id.decode())
         self.proc = False   # just a flag
-        self.firsttime = True
+        self.firsttime = True  # the first time gets different arguments
         self.lastinput = None
         
     def __repr__(self):
@@ -275,14 +275,24 @@ class SingleSession(Session):
         self.proc = True
 
     def input(self, msg):
+        """We stash the input (bytes) to be used in gameread().
+        (Note that gameread() is called right after input().)
+        """
         self.lastinput = msg
 
     async def gameread(self):
+        """Perform one move.
+        """
         args = shlex.split(opts.command)
+        # These arguments are specific to glulxe/remglk.
+        # See the Glulxe README for an explanation.
         args += [ '--autosave', '-singleturn', '--autodir', self.savedir ]
         if self.firsttime:
+            # On the first turn, we don't autorestore. This ensures that
+            # we start at the beginning of the game.
             self.firsttime = False
         else:
+            # Autorestore the previous turn.
             args += [ '--autorestore', '-autometrics' ]
             
         proc = tornado.process.Subprocess(
