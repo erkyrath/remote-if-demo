@@ -38,6 +38,10 @@ tornado.options.define(
     help='connection method: "ajax" or "ws"')
 
 tornado.options.define(
+    'session', type=str, default='persist',
+    help='interpreter session type: "persist" or "single"')
+
+tornado.options.define(
     'gidebug', type=bool,
     help='activate the glkote debug console')
 
@@ -50,6 +54,9 @@ if not opts.command:
 
 if opts.connect not in ('ajax', 'ws'):
     raise Exception('The --connect argument must be "ajax" or "ws"')
+
+if opts.session not in ('persist', 'single'):
+    raise Exception('The --session argument must be "persist" or "single"')
 
 # Define application options which are always set.
 appoptions = {
@@ -100,7 +107,8 @@ class PlayHandler(tornado.web.RequestHandler):
         
         session = self.application.sessions.get(sessionid)
         if not session:
-            session = SingleSession(self.application, sessionid)
+            sessionclass = Session.sessionclass(opts.session)
+            session = sessionclass(self.application, sessionid)
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
             
@@ -139,7 +147,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         
         session = self.application.sessions.get(sessionid)
         if not session:
-            session = SingleSession(self.application, sessionid)
+            sessionclass = Session.sessionclass(opts.session)
+            session = sessionclass(self.application, sessionid)
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
 
@@ -182,7 +191,17 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 class Session:
     """The Session class represents a logged-in player.
     """
-    pass
+    @staticmethod
+    def sessionclass(val):
+        if val == 'persist':
+            return PersistSession
+        elif val == 'single':
+            return SingleSession
+        else:
+            raise Exception('unknown class')
+
+    def __repr__(self):
+        return '<%s "%s">' % (self.__class__.__name__, self.id.decode(),)
 
 class PersistSession(Session):
     """A Session that keeps an interpreter running in the background.
@@ -195,9 +214,6 @@ class PersistSession(Session):
         self.proc = None
         self.linebuffer = []
         
-    def __repr__(self):
-        return '<Session "%s">' % (self.id.decode(),)
-
     def launch(self):
         """Start the interpreter subprocess.
         """
@@ -265,9 +281,6 @@ class SingleSession(Session):
         self.firsttime = True  # the first time gets different arguments
         self.lastinput = None
         
-    def __repr__(self):
-        return '<Session "%s">' % (self.id.decode(),)
-
     def launch(self):
         """Create the directory for saving.
         """
