@@ -28,6 +28,13 @@ The connection between GlkOte and the server is handled with AJAX requests.
 If you add "--connect=ws", it will use Websocket requests instead. They
 both work; I just wanted to provide sample code for both.
 
+The game interpreter runs as a persistent subprocess of the server. This
+is the default "--session=persist" mode.
+
+If you add "--session=single", the interpreter will only run when needed
+(just long enough to process each new turn). The game state will be
+autosaved in the "savedir" directory.
+
 To try the Glulxe experimental debugger, compile Glulxe with the VM_DEBUGGER
 option. Then invoke it like this:
    python3 remote-if.py --debug --gidebug --command='glulxe -D advent.ulx'
@@ -59,13 +66,18 @@ browsers will not allow an http: web page to load file: image URLs.)
 
 This is a demo, *not* a production-ready solution.
 
-- This has no database component, nor any other sort of persistence.
+- In --session=persist mode, this has no database component.
   Instances of the IF game run as subprocesses of the server. If the
   server restarts, the games are all killed.
+  Instances consume memory for as long as they run. There is currently
+  no reaping of abandoned games, so the server will eventually consume
+  all RAM and choke.
 
-- Since the IF games run as subprocesses, they consume memory for as
-  long as they run. There is currently no reaping of abandoned games,
-  so the server will eventually consume all RAM and choke.
+- In --session=single mode, instances of the game autosave (in the
+  savedir directory). But there's no way for the client to pick up
+  an existing game -- you'll get a "generation number mismatch" error.
+  (A real solution would save the gen num in a client cookie,
+  or, better, have the client send a "refresh" input.)
 
 - File dialog operations can only prompt for a bare filename.
 
