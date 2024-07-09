@@ -245,12 +245,6 @@ class Session:
             msg = await self.proc.stdout.read_until(b'\n')
             self.linebuffer.extend(msg.splitlines())
 
-    #def gameclosed(self, msg):
-    #    """Callback for game process termination. (Technically, EOF on
-    #    the game's stdout.)
-    #    """
-    #    self.log.info('Game has terminated!')
-    
         
 # Core handlers.
 handlers = [
