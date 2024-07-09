@@ -100,7 +100,7 @@ class PlayHandler(tornado.web.RequestHandler):
         
         session = self.application.sessions.get(sessionid)
         if not session:
-            session = Session(self.application, sessionid)
+            session = PersistSession(self.application, sessionid)
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
             
@@ -139,7 +139,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         
         session = self.application.sessions.get(sessionid)
         if not session:
-            session = Session(self.application, sessionid)
+            session = PersistSession(self.application, sessionid)
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
 
@@ -180,8 +180,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         del self.application.sessions[self.sessionid]
 
 class Session:
-    """The Session class represents a logged-in player. The Session contains
-    the link to the RemGlk/Glulxe subprocess.
+    """The Session class represents a logged-in player.
+    """
+    pass
+
+class PersistSession(Session):
+    """A Session that keeps an interpreter running in the background.
+    Contains the link to the persistent RemGlk/Glulxe subprocess.
     """
     
     def __init__(self, app, sessionid):
@@ -244,6 +249,21 @@ class Session:
                 
             msg = await self.proc.stdout.read_until(b'\n')
             self.linebuffer.extend(msg.splitlines())
+
+class SingleSession(Session):
+    """A Session that runs an interpreter process in -singleturn mode.
+    On every turn it launches the interpreter, restores the previous
+    state, performs one move, saves a new state, and shuts down the
+    interpreter.
+    """
+    
+    def __init__(self, app, sessionid):
+        self.log = app.log
+        self.id = sessionid
+        
+    def __repr__(self):
+        return '<Session "%s">' % (self.id.decode(),)
+
 
         
 # Core handlers.
