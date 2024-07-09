@@ -279,7 +279,7 @@ class SingleSession(Session):
 
     async def gameread(self):
         args = shlex.split(opts.command)
-        args += [ '--autodir', self.savedir ]
+        args += [ '--autosave', '-singleturn', '--autodir', self.savedir ]
         if self.firsttime:
             self.firsttime = False
         else:
