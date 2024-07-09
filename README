@@ -118,8 +118,8 @@ This is a demo, *not* a production-ready solution.
 
 These scripts require:
 
-  Python 3 (tested with Python 3.9)
-  Tornado web server (tested with Tornado 6.1)
+  Python 3 (tested with Python 3.12)
+  Tornado web server (tested with Tornado 6.4.1)
     http://www.tornadoweb.org/
   (For remote-if.py) An application (such as Glulxe) compiled with
     RemGlk 0.3.0 or later
