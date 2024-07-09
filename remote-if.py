@@ -10,7 +10,7 @@ Written by Andrew Plotkin. This script is in the public domain.
 """
 
 import logging
-import os
+import os, os.path
 import json
 import binascii
 import shlex
@@ -100,7 +100,7 @@ class PlayHandler(tornado.web.RequestHandler):
         
         session = self.application.sessions.get(sessionid)
         if not session:
-            session = PersistSession(self.application, sessionid)
+            session = SingleSession(self.application, sessionid)
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
             
@@ -139,7 +139,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         
         session = self.application.sessions.get(sessionid)
         if not session:
-            session = PersistSession(self.application, sessionid)
+            session = SingleSession(self.application, sessionid)
             self.application.sessions[sessionid] = session
             self.application.log.info('Created session object %s', session)
 
@@ -260,12 +260,43 @@ class SingleSession(Session):
     def __init__(self, app, sessionid):
         self.log = app.log
         self.id = sessionid
+        self.savedir = os.path.join('savedir', self.id.decode())
+        self.proc = False   # just a flag
+        self.firsttime = True
+        self.lastinput = None
         
     def __repr__(self):
         return '<Session "%s">' % (self.id.decode(),)
 
+    def launch(self):
+        """Create the directory for saving.
+        """
+        os.makedirs(self.savedir, exist_ok=True)
+        self.proc = True
 
+    def input(self, msg):
+        self.lastinput = msg
+
+    async def gameread(self):
+        args = shlex.split(opts.command)
+        args += [ '--autodir', self.savedir ]
+        if self.firsttime:
+            self.firsttime = False
+        else:
+            args += [ '--autorestore', '-autometrics' ]
+            
+        proc = tornado.process.Subprocess(
+            args,
+            close_fds=True,
+            stdin=tornado.process.Subprocess.STREAM,
+            stdout=tornado.process.Subprocess.STREAM)
         
+        proc.stdin.write(self.lastinput)
+        msg = await proc.stdout.read_until_close()
+        proc.stdin.close()
+        return msg
+
+
 # Core handlers.
 handlers = [
     (r'/', MainHandler),
