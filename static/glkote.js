@@ -1,7 +1,7 @@
 'use strict';
 
 /* GlkOte -- a Javascript display library for IF interfaces
- * GlkOte Library: version 2.3.2.
+ * GlkOte Library: version 2.3.4.
  * Designed by Andrew Plotkin <erkyrath@eblong.com>
  * <http://eblong.com/zarf/glk/glkote.html>
  * 
@@ -73,6 +73,7 @@ let request_timer = null;
 let request_timer_interval = null;
 let resize_timer = null;
 let retry_timer = null;
+let is_mobile = false;
 const perform_paging = true;
 let detect_external_links = false;
 let regex_external_links = null;
@@ -92,7 +93,11 @@ const approx_scroll_width = 20;
    this is less than the last-line bottom margin, it won't cause
    problems.) */
 const moreprompt_margin = 4;
-
+/* Minimum width of an input field. This comes up if the prompt is
+   unusually long, ending near the right margin. We'd rather the
+   input element wrap around to the next line in that case. */
+const inputel_minwidth = 200;
+    
 /* Some constants for key event native values. (Not including function 
    keys.) */
 const key_codes = {
@@ -170,12 +175,8 @@ function glkote_init(iface) {
         terminator_key_values[terminator_key_names[val]] = val;
     }
 
-    /*if (false) {
-    // ### test for mobile browser? "'ontouchstart' in document.documentElement"?
-    // Paging doesn't make sense for iphone/android, because you can't
-    //   get keystroke events from a window.
-    perform_paging = false;
-    }*/
+    /* Checking this is bad form, but we will use it for some UI tweaks. */
+    is_mobile = ('ontouchstart' in window);
 
     /* Map mapping window ID (strings) to window description objects. */
     windowdic = new Map();
@@ -225,9 +226,9 @@ function glkote_init(iface) {
     }
     current_metrics = res;
 
-    /* Add some elements which will give us notifications if the gameport
+    /* Add an observer which will give us notifications if the gameport
        size changes. */
-    create_resize_sensors();
+    create_resize_sensor();
 
     if (iface.max_buffer_length)
         max_buffer_length = iface.max_buffer_length;
@@ -550,76 +551,29 @@ function metrics_match(met1, met2) {
     return true;
 }
 
-/* Create invisible divs in the gameport which will fire events if the
-   gameport changes size. (For any reason, including document CSS changes.
-   We need this to detect Lectrote's margin change, for example.)
-
-   This code is freely adapted from CSS Element Queries by Marc J. Schmidt.
-   https://github.com/marcj/css-element-queries
+/* Create an object which will fire events if the gameport changes size.
+   (For any reason, including document CSS changes. We need this to detect
+   Lectrote's margin change, for example.)
 */
-function create_resize_sensors() {
+function create_resize_sensor() {
     const gameport = $('#'+gameport_id, dom_context);
-    if (!gameport.length)
-        return 'Cannot find gameport element #'+gameport_id+' in this document.';
-
-    const shrinkel = $('<div>', {
-        id: dom_prefix+'resize-sensor-shrink'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0', top:'0', bottom:'0',
-        overflow:'hidden', visibility:'hidden',
-        'z-index':'-1'
-    });
-    shrinkel.append($('<div>', {
-        id: dom_prefix+'resize-sensor-shrink-child'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0',
-        width:'200%', height:'200%'
-    }));
-
-    const expandel = $('<div>', {
-        id: dom_prefix+'resize-sensor-expand'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0', top:'0', bottom:'0',
-        overflow:'hidden', visibility:'hidden',
-        'z-index':'-1'
-    });
-    expandel.append($('<div>', {
-        id: dom_prefix+'resize-sensor-expand-child'
-    }).css({
-        position:'absolute',
-        left:'0', right:'0'
-    }));
-
-    const shrinkdom = shrinkel.get(0);
-    const expanddom = expandel.get(0);
-    const expandchilddom = expanddom.childNodes[0];
-
-    function reset() {
-        shrinkdom.scrollLeft = 100000;
-        shrinkdom.scrollTop = 100000;
-
-        expandchilddom.style.width = '100000px';
-        expandchilddom.style.height = '100000px';
-        expanddom.scrollLeft = 100000;
-        expanddom.scrollTop = 100000;
+    if (!gameport.length) {
+        console.log('Cannot find gameport element #'+gameport_id+' in this document.');
+        return;
     }
 
-    gameport.append(shrinkel);
-    gameport.append(expandel);
-    reset();
-
-    function evhan(ev) {
-        evhan_doc_resize(ev);
-        reset();
-    }
-
-    /* These events fire copiously when the window is being resized.
+    /* This event fires copiously when the window is being resized.
        This is one reason evhan_doc_resize() has debouncing logic. */
-    shrinkel.on('scroll', evhan);
-    expandel.on('scroll', evhan);
+    function evhan(ents) {
+        evhan_doc_resize();
+    }
+
+    try {
+        let observer = new ResizeObserver(evhan);
+        observer.observe(gameport.get(0));
+    } catch (ex) {
+        console.log('ResizeObserver is not available in this browser.');
+    }
 }
 
 /* This function becomes GlkOte.update(). The game calls this to update
@@ -828,17 +782,10 @@ function glkote_update(arg) {
     }
 
     if (newinputwin) {
-        /* MSIE is weird about when you can call focus(). The input element
-           has probably just been added to the DOM, and MSIE balks at
-           giving it the focus right away. So we defer the call until
-           after the javascript context has yielded control to the browser. */
-        const focusfunc = function() {
-            const win = windowdic.get(newinputwin);
-            if (win.inputel) {
-                win.inputel.focus();
-            }
-        };
-        defer_func(focusfunc);
+        const win = windowdic.get(newinputwin);
+        if (win.inputel) {
+            win.inputel.focus();
+        }
     }
 
     if (autorestore) {
@@ -1355,10 +1302,9 @@ function accept_one_content(arg) {
                    buffermarginx is one pixel too low. We fudge for that, giving a
                    result which errs on the low side. */
                 let width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-                if (width < 1)
-                    width = 1;
-                inputel.css({ position: 'absolute',
-                              left: '0px', top: '0px', width: width+'px' });
+                if (width < inputel_minwidth)
+                    width = inputel_minwidth;
+                inputel.css({ width: width+'px' });
                 cursel.append(inputel);
             }
         }
@@ -1477,6 +1423,12 @@ function accept_inputset(arg) {
             inputel = $('<input>',
                         { id: dom_prefix+'win'+win.id+'_input',
                           'class': classes, type: 'text', maxlength: maxlen });
+            if (is_mobile) {
+                if (maxlen < 3)
+                    inputel.attr('placeholder', '\u2316');
+                else
+                    inputel.attr('placeholder', 'Tap here to type');
+            }
             inputel.attr({
                 'aria-live': 'off',
                 'autocapitalize': 'off',
@@ -1542,10 +1494,9 @@ function accept_inputset(arg) {
                buffermarginx is one pixel too low. We fudge for that, giving a
                result which errs on the low side. */
             let width = win.frameel.width() - (current_metrics.buffermarginx + pos.left + 2);
-            if (width < 1)
-                width = 1;
-            inputel.css({ position: 'absolute',
-                          left: '0px', top: '0px', width: width+'px' });
+            if (width < inputel_minwidth)
+                width = inputel_minwidth;
+            inputel.css({ width: width+'px' });
             if (newinputel)
                 cursel.append(inputel);
         }
@@ -2360,7 +2311,7 @@ function recording_standard_handler(state) {
    bigger/smaller".)
    - Autorestore. (The window might be a different size than the autosave
    data expects, so we trigger this.)
-   - The magic gameport resize sensors created in create_resize_sensors().
+   - The magic gameport resize sensor created in create_resize_sensor().
 */
 function evhan_doc_resize() {
     /* We don't want to send a whole flurry of these events, just because
@@ -2778,7 +2729,7 @@ function evhan_input_char_keypress(ev) {
 */
 function evhan_input_char_input(ev) {
     const char = ev.target.value[0]
-    if (char === '') {
+    if (char === '' || char == null) {
         return false;
     }
     var winid = $(this).data('winid');
@@ -3006,7 +2957,7 @@ function evhan_debug_command(cmd) {
    become the GlkOte global. */
 return {
     classname: 'GlkOte',
-    version:  '2.3.2',
+    version:  '2.3.4',
     init:     glkote_init,
     inited:   glkote_inited,
     update:   glkote_update,
